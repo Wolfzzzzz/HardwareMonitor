@@ -132,15 +132,14 @@ final class AppModel: ObservableObject {
         } else {
             UserDefaults.standard.set([appLanguage], forKey: "AppleLanguages")
         }
-        // 0.4s 后重启，让 UI 先展示当前选中态
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            let url = Bundle.main.bundleURL
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            p.arguments = [url.path]
-            try? p.run()
-            NSApp.terminate(nil)
-        }
+        // 用子进程延迟重启：先让本进程退出，再 open 启动新实例
+        // （直接 open + terminate 会因为 open 复用当前运行实例导致只退出不重开）
+        let bundlePath = Bundle.main.bundlePath
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = ["-c", "sleep 1 && open \"\(bundlePath)\""]
+        try? p.run()
+        NSApp.terminate(nil)
     }
 
     // MARK: - 采样
