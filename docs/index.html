@@ -26,58 +26,123 @@
     color: var(--text);
     line-height: 1.7;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
   .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---- 背景漂浮光斑 ---- */
+  .aurora {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden;
+    pointer-events: none;
+  }
+  .aurora::before, .aurora::after {
+    content: ""; position: absolute; border-radius: 50%;
+    filter: blur(90px); opacity: .35;
+  }
+  .aurora::before {
+    width: 520px; height: 520px; left: -140px; top: -160px;
+    background: radial-gradient(circle, #58a6ff, transparent 65%);
+    animation: drift1 22s ease-in-out infinite alternate;
+  }
+  .aurora::after {
+    width: 460px; height: 460px; right: -120px; top: 30%;
+    background: radial-gradient(circle, #bc8cff, transparent 65%);
+    animation: drift2 26s ease-in-out infinite alternate;
+  }
+  @keyframes drift1 { to { transform: translate(90px, 110px) scale(1.15); } }
+  @keyframes drift2 { to { transform: translate(-80px, -70px) scale(1.1); } }
 
   header {
     padding: 90px 0 60px;
     text-align: center;
-    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(88,166,255,.12), transparent);
+    position: relative;
   }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 13px; color: var(--sub);
     border: 1px solid var(--border); border-radius: 999px;
     padding: 4px 14px; margin-bottom: 22px;
+    animation: fadeDown .7s ease both;
   }
-  .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
-  h1 { font-size: 44px; font-weight: 800; letter-spacing: -.5px; }
+  .badge .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    animation: pulse 2.2s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(63,185,80,.5); }
+    50% { box-shadow: 0 0 0 6px rgba(63,185,80,0); }
+  }
+  h1 { font-size: 44px; font-weight: 800; letter-spacing: -.5px; animation: fadeUp .7s .1s ease both; }
   h1 .grad {
-    background: linear-gradient(90deg, #58a6ff, #bc8cff);
+    background: linear-gradient(90deg, #58a6ff, #bc8cff, #58a6ff);
+    background-size: 200% auto;
     -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: gradShift 5s linear infinite;
   }
-  .slogan { color: var(--sub); font-size: 18px; margin: 14px auto 0; max-width: 560px; }
-  .cta { margin-top: 30px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  @keyframes gradShift { to { background-position: 200% center; } }
+  .slogan {
+    color: var(--sub); font-size: 18px; margin: 14px auto 0; max-width: 560px;
+    animation: fadeUp .7s .2s ease both;
+  }
+  .cta { margin-top: 30px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; animation: fadeUp .7s .3s ease both; }
   .btn {
     text-decoration: none; font-size: 15px; font-weight: 600;
-    padding: 10px 22px; border-radius: 10px; transition: .2s;
+    padding: 10px 22px; border-radius: 10px; transition: .25s;
+    position: relative; overflow: hidden;
   }
   .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #4d97e8; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(88,166,255,.35); }
+  .btn-primary::after {
+    content: ""; position: absolute; top: 0; left: -80%; width: 60%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
+    transform: skewX(-20deg);
+    animation: shine 3.5s ease infinite;
+  }
+  @keyframes shine { 0%, 60% { left: -80%; } 100% { left: 130%; } }
   .btn-ghost { border: 1px solid var(--border); color: var(--text); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
 
-  section { padding: 52px 0; }
+  section { padding: 52px 0; position: relative; }
   section + section { border-top: 1px solid var(--border); }
   h2 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
   .lead { color: var(--sub); margin-bottom: 28px; font-size: 15px; }
+
+  /* ---- 滚动渐入 ---- */
+  .reveal {
+    opacity: 0; transform: translateY(26px);
+    transition: opacity .7s ease, transform .7s ease;
+  }
+  .reveal.in { opacity: 1; transform: none; }
 
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
   .stat {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 14px; padding: 20px; text-align: center;
+    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
   }
-  .stat .num { font-size: 30px; font-weight: 800; color: var(--accent); }
+  .stat:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent);
+    box-shadow: 0 10px 30px rgba(88,166,255,.15);
+  }
+  .stat .num { font-size: 30px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
   .stat .label { color: var(--sub); font-size: 13px; margin-top: 4px; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
   .card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 14px; padding: 20px;
+    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+  .card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(88,166,255,.55);
+    box-shadow: 0 12px 32px rgba(88,166,255,.12);
   }
   .card h3 { font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
   .card p { color: var(--sub); font-size: 14px; }
-  .icon { width: 22px; height: 22px; flex-shrink: 0; }
+  .icon { width: 22px; height: 22px; flex-shrink: 0; transition: transform .35s ease; }
+  .card:hover .icon { transform: rotate(-8deg) scale(1.15); }
 
   .mono {
     background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
@@ -96,15 +161,26 @@
     border-top: 1px solid var(--border); padding: 36px 0 48px;
     text-align: center; color: var(--sub); font-size: 13px;
   }
-  footer a { color: var(--accent); text-decoration: none; }
+  footer a { color: var(--accent); text-decoration: none; transition: color .2s; }
+  footer a:hover { color: #79b8ff; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 
   @media (max-width: 640px) {
     h1 { font-size: 32px; }
     header { padding: 60px 0 40px; }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+  }
 </style>
 </head>
 <body>
+
+<div class="aurora"></div>
 
 <header>
   <div class="wrap">
@@ -120,43 +196,43 @@
 
 <section>
   <div class="wrap">
-    <h2>一些真实数字</h2>
-    <p class="lead">不是 PPT 里的数据，是本机跑出来的。</p>
+    <h2 class="reveal">一些真实数字</h2>
+    <p class="lead reveal">不是 PPT 里的数据，是本机跑出来的。</p>
     <div class="stats">
-      <div class="stat"><div class="num">45</div><div class="label">个温度传感器（HID 直读）</div></div>
-      <div class="stat"><div class="num">&lt;40 MB</div><div class="label">运行内存占用</div></div>
-      <div class="stat"><div class="num">103%</div><div class="label">本机电池健康度</div></div>
-      <div class="stat"><div class="num">1s</div><div class="label">默认刷新间隔</div></div>
+      <div class="stat reveal"><div class="num"><span data-count="45">0</span></div><div class="label">个温度传感器（HID 直读）</div></div>
+      <div class="stat reveal"><div class="num">&lt;<span data-count="40">0</span> MB</div><div class="label">运行内存占用</div></div>
+      <div class="stat reveal"><div class="num"><span data-count="103">0</span>%</div><div class="label">本机电池健康度</div></div>
+      <div class="stat reveal"><div class="num"><span data-count="1">0</span>s</div><div class="label">默认刷新间隔</div></div>
     </div>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <h2>能看什么</h2>
-    <p class="lead">监控数据全部来自系统内核接口，不装第三方依赖。</p>
+    <h2 class="reveal">能看什么</h2>
+    <p class="lead reveal">监控数据全部来自系统内核接口，不装第三方依赖。</p>
     <div class="grid">
-      <div class="card">
+      <div class="card reveal">
         <h3><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg>硬件监控</h3>
         <p>CPU 占用率、内存占用和组成、磁盘剩余、网络上下行速率、屏幕亮度。</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h3><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>电池</h3>
         <p>电量、健康度、循环次数、充电状态、电池温度，一块电池的状况全在这。</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h3><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>趋势图</h3>
         <p>温度、CPU、内存、网络四条历史曲线，随时间滚动更新，一眼看出趋势。</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h3><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><path d="M12 9l-6 6h12l-6-6z"/><path d="M12 2v4M12 22v-2"/></svg>告警</h3>
         <p>温度、CPU、内存、磁盘、电量超过阈值触发系统通知和提示音，菜单栏图标变红。</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h3><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20M6 15h4"/></svg>悬浮小窗</h3>
         <p>无边框置顶小窗，按住就能拖动，随时瞄一眼，深浅色自动适配。</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h3><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>效率工具</h3>
         <p>剪贴板历史、系统信息一键复制、二维码、单位换算、编码、番茄钟、便签，顺手加进来的。</p>
       </div>
@@ -166,23 +242,23 @@
 
 <section>
   <div class="wrap">
-    <h2>技术上的几个选择</h2>
-    <p class="lead">写这个小东西踩过的坑，也顺便记录在这。</p>
+    <h2 class="reveal">技术上的几个选择</h2>
+    <p class="lead reveal">写这个小东西踩过的坑，也顺便记录在这。</p>
     <div class="grid">
-      <div class="card">
+      <div class="card reveal">
         <h3>温度走 HID，不走 SMC</h3>
         <p>Apple Silicon 上芯片温度其实挂在 HID 传感器集线器（usagePage 0xFF00）里，PMU tdie/tdev、NAND、电池一共 45 个传感器。普通权限就能读，CPU 温度取 tdie 最大值。私有 API 没进 SDK，用 dlopen 动态调用。</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h3>风扇为什么读不到</h3>
         <p>M 系列上只有 SMC 有 F*Ac 这类 key，新版 macOS 对普通进程直接拒绝。像 BuhoCleaner 能显示风扇，是因为它内置了一个需要开发者证书签名的 root 特权助手，普通 App 装不了。SMC 协议代码写好了，系统放开接口就能恢复。</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h3>纯 SwiftUI，无三方依赖</h3>
         <p>界面原生 SwiftUI，图表用 Swift Charts，数据全是系统接口。进程 CPU 百分比按核心数归一化，还做了平台无关的自动校准，换个系统版本也不用改代码。</p>
       </div>
     </div>
-    <div class="note">
+    <div class="note reveal">
       一个插曲：Xcode 27 beta 的 Swift 宏系统是坏的，@Observable 和 @State 全报错，工程统一用了 ObservableObject 绕开。代码里注释都写清楚了。
     </div>
   </div>
@@ -190,9 +266,9 @@
 
 <section id="how">
   <div class="wrap">
-    <h2>怎么用</h2>
-    <p class="lead">两种方式，任选。</p>
-    <div class="mono">
+    <h2 class="reveal">怎么用</h2>
+    <p class="lead reveal">两种方式，任选。</p>
+    <div class="mono reveal">
       <span class="c"># 方式一：命令行构建</span><br>
       ./build.sh<br>
       open build/Build/Products/Debug/HardwareMonitor.app<br>
@@ -200,7 +276,7 @@
       <span class="c"># 方式二：Xcode 直接跑</span><br>
       <span class="c">打开 HardwareMonitor.xcodeproj，选 My Mac，⌘R</span>
     </div>
-    <p style="margin-top:16px; color:var(--sub); font-size:14px;">菜单栏会多一个温度计图标，点开就是概览面板。首次使用弹通知权限时点允许，告警要用。</p>
+    <p class="reveal" style="margin-top:16px; color:var(--sub); font-size:14px;">菜单栏会多一个温度计图标，点开就是概览面板。首次使用弹通知权限时点允许，告警要用。</p>
   </div>
 </section>
 
@@ -209,6 +285,43 @@
     用 SwiftUI 和一点 IOKit 写的个人小项目 · <a href="https://github.com/Wolfzzzzz/HardwareMonitor" target="_blank">GitHub</a>
   </div>
 </footer>
+
+<script>
+  // 滚动渐入
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        e.target.style.transitionDelay = (Math.min(e.target.dataset.delay || 0, 6) * 60) + 'ms';
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach((el, i) => {
+    el.dataset.delay = i % 4;
+    io.observe(el);
+  });
+
+  // 数字滚动
+  function countUp(el) {
+    const target = parseFloat(el.dataset.count);
+    if (isNaN(target)) return;
+    const dur = 1100, t0 = performance.now();
+    function frame(t) {
+      const p = Math.min((t - t0) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * eased);
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  const numIO = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) { countUp(e.target); numIO.unobserve(e.target); }
+    });
+  }, { threshold: 0.5 });
+  document.querySelectorAll('[data-count]').forEach((el) => numIO.observe(el));
+</script>
 
 </body>
 </html>
