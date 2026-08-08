@@ -1,4 +1,4 @@
-/* HardwareMonitor 中文表（回显，保证中文系统不走英文 fallback） */
+/* HardwareMonitor 本地化表 */
 "1 秒" = "1 秒";
 "2 秒" = "2 秒";
 "3 秒" = "3 秒";
