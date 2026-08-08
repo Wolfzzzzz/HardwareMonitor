@@ -195,3 +195,9 @@
 "复制 %@" = "Copier %@";
 "等级 %@ / 10" = "Niveau %@ / 10";
 "风扇 %@" = "Ventilateur %@";
+
+/* Confirmation changement de langue */
+"切换语言" = "Changer de langue";
+"重启生效" = "Redémarrer";
+"取消" = "Annuler";
+"切换语言后应用会自动重启以生效" = "L'application redémarrera automatiquement pour appliquer la langue.";
