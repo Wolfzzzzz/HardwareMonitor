@@ -112,7 +112,7 @@ struct SettingsView: View {
             }
 
             Section {
-                Picker("语言 / Language", selection: $model.appLanguage) {
+                Picker("语言 / Language", selection: $model.pendingLanguage) {
                     Text("跟随系统").tag("system")
                     Text("English").tag("en")
                     Text("Français").tag("fr")
@@ -122,13 +122,17 @@ struct SettingsView: View {
                     Text("Русский").tag("ru")
                 }
                 .pickerStyle(.menu)
-                .onChange(of: model.appLanguage) { _ in
-                    model.applyLanguageChange()
+                .onChange(of: model.pendingLanguage) { _ in
+                    model.requestLanguageConfirm()
+                }
+                .alert("切换语言", isPresented: $model.showLanguageConfirm) {
+                    Button("重启生效") { model.confirmPendingLanguage() }
+                    Button("取消", role: .cancel) { model.cancelPendingLanguage() }
+                } message: {
+                    Text("切换语言后应用会自动重启以生效")
                 }
             } header: {
                 Text("语言 / Language")
-            } footer: {
-                Text("切换后应用会自动重启以生效")
             }
         }
         .formStyle(.grouped)
