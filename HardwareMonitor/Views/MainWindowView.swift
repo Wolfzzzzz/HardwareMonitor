@@ -69,7 +69,7 @@ struct MainWindowView: View {
                     .background(Capsule().fill(Color.blue.opacity(0.15)))
             }
             Spacer()
-            Text("更新于 " + (model.lastUpdated.map { Fmt.time($0) } ?? "--"))
+            Text(LZ.t("更新于 ", "Updated ") + (model.lastUpdated.map { Fmt.time($0) } ?? "--"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("刷新 \(Int(model.refreshInterval))s")
@@ -105,7 +105,7 @@ struct MainWindowView: View {
                      progress: model.snapshot.batteryPercent.map { Double($0) / 100 })
             StatCard(title: "网络下行", icon: "arrow.down", color: .cyan,
                      value: Fmt.speed(model.snapshot.netDown),
-                     sub: "上行 " + Fmt.speed(model.snapshot.netUp),
+                     sub: LZ.t("上行 ", "Up ") + Fmt.speed(model.snapshot.netUp),
                      progress: nil)
             StatCard(title: "屏幕亮度", icon: "sun.max", color: .yellow,
                      value: model.snapshot.brightness.map { String(format: "%.0f%%", $0 * 100) } ?? "--",
@@ -120,7 +120,7 @@ struct MainWindowView: View {
 
     private var batterySub: String {
         var parts: [String] = []
-        if let h = model.snapshot.batteryHealth { parts.append("健康 \(h)%") }
+        if let h = model.snapshot.batteryHealthDisplay { parts.append("健康 \(h)%") }
         if let c = model.snapshot.batteryCycles { parts.append("\(c) 次") }
         if let t = model.snapshot.batteryTempC { parts.append(String(format: "%.0f°C", t)) }
         return parts.isEmpty ? "未检测到电池" : parts.joined(separator: " · ")
