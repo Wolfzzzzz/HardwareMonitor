@@ -4,7 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
 
-    private var tempDetail: String {
+    private var tempDetail: LocalizedStringKey {
         if model.smcAvailable { return "SMC 可用" }
         if model.hidAvailable { return "HID 传感器可用（CPU 温度 = 芯片 tdie 最大值）" }
         return "当前系统未开放温度接口"
@@ -136,12 +136,12 @@ struct SettingsView: View {
     }
 }
 
-/// 阈值调节行
+/// 阈值调节行（title/detail 走 LocalizedStringKey，自动按当前语言查表）
 struct ThresholdRow: View {
-    let title: String
-    let detail: String?
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey?
     @Binding var value: Double
-    let unit: String
+    let unit: String  // °C 这种通用符号各语言一致，无需翻译
     let range: ClosedRange<Double>
     let step: Double
 
