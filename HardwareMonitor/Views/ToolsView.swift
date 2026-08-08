@@ -407,7 +407,7 @@ struct TextStatView: View {
     private var readTime: String {
         let chars = Double(model.statText.filter { !$0.isWhitespace }.count)
         let minutes = chars / 300
-        return minutes < 0.5 ? "不足 1 分钟" : String(format: "约 %.0f 分钟", minutes)
+        return minutes < 0.5 ? LZ.t("不足 1 分钟", "under a minute") : String(format: LZ.t("约 %.0f 分钟", "about %.0f min"), minutes)
     }
 
     private func statCell(_ title: String, _ value: String) -> some View {

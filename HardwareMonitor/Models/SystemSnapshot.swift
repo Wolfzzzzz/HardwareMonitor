@@ -51,6 +51,11 @@ struct SystemSnapshot {
 
     // 汇总指标（给 UI / 告警用）
     var batteryPercentValue: Double? { batteryPercent.map { Double($0) } }
+    /// 健康度显示值：内部保留真实值（新电池可能 >100%，如 103%），展示层钳到 100 避免误解
+    var batteryHealthDisplay: Int? {
+        guard let h = batteryHealth else { return nil }
+        return min(max(h, 0), 100)
+    }
     var diskPercentValue: Double { diskPercent }
     var memPercentValue: Double { memPercent }
     var cpuPercentValue: Double { cpuUsage * 100 }

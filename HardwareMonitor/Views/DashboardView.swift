@@ -164,7 +164,7 @@ struct DashboardView: View {
         if let t = model.snapshot.cpuTempC {
             return "GPU " + Fmt.temp(model.snapshot.gpuTempC) + " · \(model.snapshot.hidTemperatures.count) 个传感器"
         }
-        if let t = model.snapshot.batteryTempC { return "电池 " + Fmt.temp(t) }
+        if let t = model.snapshot.batteryTempC { return LZ.t("电池 ", "Battery ") + Fmt.temp(t) }
         return "系统未开放温度接口"
     }
     private var tempProgress: Double? {
@@ -220,7 +220,7 @@ struct DashboardView: View {
     }
     private var batterySub: String {
         var parts: [String] = []
-        if let h = model.snapshot.batteryHealth { parts.append("健康 \(h)%") }
+        if let h = model.snapshot.batteryHealthDisplay { parts.append("健康 \(h)%") }
         if let c = model.snapshot.batteryCycles { parts.append("\(c) 次") }
         if model.snapshot.batteryCharging { parts.append("充电中") }
         return parts.isEmpty ? "未检测到电池" : parts.joined(separator: " · ")

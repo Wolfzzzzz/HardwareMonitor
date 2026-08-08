@@ -32,7 +32,7 @@ struct MenuBarView: View {
                 .font(.headline)
             Spacer()
             if let t = model.lastUpdated {
-                Text("更新于 " + Fmt.time(t))
+                Text(LZ.t("更新于 ", "Updated ") + Fmt.time(t))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

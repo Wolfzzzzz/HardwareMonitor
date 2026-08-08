@@ -411,8 +411,8 @@ final class AppModel: ObservableObject {
                 stopPomodoro()
                 // 完成通知
                 let content = UNMutableNotificationContent()
-                content.title = "番茄钟完成"
-                content.body = "\(pomoMinutes) 分钟专注结束，休息一下吧"
+                content.title = LZ.t("番茄钟完成", "Pomodoro Finished")
+                content.body = LZ.t("\(pomoMinutes) 分钟专注结束，休息一下吧", "\(pomoMinutes) minutes of focus done. Take a break.")
                 content.sound = .default
                 UNUserNotificationCenter.current().add(UNNotificationRequest(
                     identifier: "hwmon.pomo.\(Date().timeIntervalSince1970)",
