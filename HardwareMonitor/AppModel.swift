@@ -41,6 +41,27 @@ final class AppModel: ObservableObject {
     @Published var appLanguage: String {
         didSet { UserDefaults.standard.set(appLanguage, forKey: "appLanguage") }
     }
+    /// 语言选择暂存：设置页先改这里，确认后才应用（避免误触）
+    @Published var pendingLanguage: String = "system"
+    @Published var showLanguageConfirm = false
+
+    /// 语言选择变更（Picker onChange 触发）→ 弹确认框
+    func requestLanguageConfirm() {
+        showLanguageConfirm = true
+    }
+
+    /// 确认：应用语言 + 重启
+    func confirmPendingLanguage() {
+        showLanguageConfirm = false
+        appLanguage = pendingLanguage
+        applyLanguageChange()
+    }
+
+    /// 取消：还原选择，不重启
+    func cancelPendingLanguage() {
+        showLanguageConfirm = false
+        pendingLanguage = appLanguage
+    }
 
     // MARK: - 数据状态
 
@@ -121,6 +142,7 @@ final class AppModel: ObservableObject {
         noteText = d.string(forKey: "noteText") ?? ""
         launchAtLogin = SMAppService.mainApp.status == .enabled
         appLanguage = d.string(forKey: "appLanguage") ?? "system"
+        pendingLanguage = appLanguage
     }
 
     // MARK: - 界面语言切换
