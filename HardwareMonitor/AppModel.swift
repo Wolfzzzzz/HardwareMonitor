@@ -37,6 +37,11 @@ final class AppModel: ObservableObject {
     @Published var launchAtLogin: Bool = false
     @Published var launchAtLoginError: String?
 
+    // 界面语言：system / en / fr / zh-Hans / zh-Hant-HK / zh-Hant-TW / ru（持久化 + AppleLanguages 覆盖）
+    @Published var appLanguage: String {
+        didSet { UserDefaults.standard.set(appLanguage, forKey: "appLanguage") }
+    }
+
     // MARK: - 数据状态
 
     @Published var snapshot = SystemSnapshot()
@@ -115,6 +120,27 @@ final class AppModel: ObservableObject {
         clipboardEnabled = d.object(forKey: "clipboardEnabled") == nil ? true : d.bool(forKey: "clipboardEnabled")
         noteText = d.string(forKey: "noteText") ?? ""
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        appLanguage = d.string(forKey: "appLanguage") ?? "system"
+    }
+
+    // MARK: - 界面语言切换
+
+    /// 写入 AppleLanguages 覆盖并重启应用（SwiftUI 本地化在启动时加载，必须重启生效）
+    func applyLanguageChange() {
+        if appLanguage == "system" {
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.set([appLanguage], forKey: "AppleLanguages")
+        }
+        // 0.4s 后重启，让 UI 先展示当前选中态
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            let url = Bundle.main.bundleURL
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            p.arguments = [url.path]
+            try? p.run()
+            NSApp.terminate(nil)
+        }
     }
 
     // MARK: - 采样
