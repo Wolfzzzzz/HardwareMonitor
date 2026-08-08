@@ -110,6 +110,26 @@ struct SettingsView: View {
             } footer: {
                 Text("本应用仅读取硬件数据，不进行任何写入或调节。\n温度与风扇依赖系统 SMC 接口：当前 macOS 27 beta 未开放时自动降级为电池温度参考。")
             }
+
+            Section {
+                Picker("语言 / Language", selection: $model.appLanguage) {
+                    Text("跟随系统").tag("system")
+                    Text("English").tag("en")
+                    Text("Français").tag("fr")
+                    Text("简体中文（中国大陆）").tag("zh-Hans")
+                    Text("繁體中文（香港）").tag("zh-Hant-HK")
+                    Text("繁體中文（台灣）").tag("zh-Hant-TW")
+                    Text("Русский").tag("ru")
+                }
+                .pickerStyle(.menu)
+                .onChange(of: model.appLanguage) { _ in
+                    model.applyLanguageChange()
+                }
+            } header: {
+                Text("语言 / Language")
+            } footer: {
+                Text("切换后应用会自动重启以生效")
+            }
         }
         .formStyle(.grouped)
         .navigationTitle("硬件监控设置")
