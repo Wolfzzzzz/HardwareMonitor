@@ -20,7 +20,7 @@ struct SettingsView: View {
                     Text("5 秒").tag(5.0)
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: model.refreshInterval) { _ in
+                .onChange(of: model.refreshInterval) { _, _ in
                     model.restartSampling()
                 }
                 Text("刷新间隔越小，数据越实时，占用会略高")
@@ -87,7 +87,7 @@ struct SettingsView: View {
 
             Section("开机自启") {
                 Toggle("登录时自动启动", isOn: $model.launchAtLogin)
-                    .onChange(of: model.launchAtLogin) { _ in
+                    .onChange(of: model.launchAtLogin) { _, _ in
                         model.toggleLaunchAtLogin()
                     }
                 if let err = model.launchAtLoginError {
@@ -122,7 +122,7 @@ struct SettingsView: View {
                     Text("Русский").tag("ru")
                 }
                 .pickerStyle(.menu)
-                .onChange(of: model.pendingLanguage) { _ in
+                .onChange(of: model.pendingLanguage) { _, _ in
                     model.requestLanguageConfirm()
                 }
                 .alert("切换语言", isPresented: $model.showLanguageConfirm) {
