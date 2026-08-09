@@ -172,7 +172,7 @@ final class AppModel: ObservableObject {
         alertEngine.requestAuthorizationIfNeeded()
 
         NotificationCenter.default.addObserver(forName: .floatingPanelClosed, object: nil, queue: .main) { [weak self] _ in
-            self?.isPanelVisible = false
+            Task { @MainActor in self?.isPanelVisible = false }
         }
 
         hub.onSnapshot = { [weak self] snap, _ in
@@ -302,7 +302,7 @@ final class AppModel: ObservableObject {
     private func startClipboardMonitor() {
         clipboardTimer?.invalidate()
         let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.checkClipboard()
+            Task { @MainActor in self?.checkClipboard() }
         }
         RunLoop.main.add(timer, forMode: .common)
         clipboardTimer = timer
@@ -434,7 +434,9 @@ final class AppModel: ObservableObject {
         stopPomodoro()
         pomoRemaining = pomoMinutes * 60
         pomoRunning = true
-        let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.pomodoroTick() }
+        let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.pomodoroTick() }
+        }
         RunLoop.main.add(t, forMode: .common)
         pomoTimer = t
     }
