@@ -440,8 +440,8 @@ struct EncodeToolsView: View {
 
             TextField("输入", text: $model.encodeInput)
                 .textFieldStyle(.roundedBorder)
-                .onChange(of: model.encodeInput) { _ in model.encodeOutput = compute() }
-                .onChange(of: model.encodeMode) { _ in model.encodeOutput = compute() }
+                .onChange(of: model.encodeInput) { _, _ in model.encodeOutput = compute() }
+                .onChange(of: model.encodeMode) { _, _ in model.encodeOutput = compute() }
 
             HStack {
                 Text(model.encodeOutput)
