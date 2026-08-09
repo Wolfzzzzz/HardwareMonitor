@@ -60,7 +60,7 @@ final class SMCReader {
 
     private func call(_ input: [UInt8]) -> (kr: kern_return_t, out: [UInt8])? {
         let size = 80
-        var inCnt = size
+        let inCnt = size
         var out = [UInt8](repeating: 0, count: size)
         var outCnt = size
         let kr = input.withUnsafeBytes { iptr in
