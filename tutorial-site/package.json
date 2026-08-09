@@ -1,0 +1,17 @@
+{
+  "name": "hwmon-tutorial",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HardwareMonitor 运行教程",
+  "scripts": {
+    "docs:dev": "vuepress dev docs",
+    "docs:build": "vuepress build docs"
+  },
+  "devDependencies": {
+    "@vuepress/bundler-vite": "^2.0.0-rc.0",
+    "@vuepress/theme-default": "^2.0.0-rc.0",
+    "sass-embedded": "^1.100.0",
+    "vuepress": "^2.0.0-rc.0"
+  }
+}
