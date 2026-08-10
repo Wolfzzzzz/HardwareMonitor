@@ -14,6 +14,7 @@ struct MainWindowView: View {
                 Text("剪贴板").tag(1)
                 Text("工具").tag(2)
                 Text("专业").tag(3)
+                Text("高级").tag(4)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -28,8 +29,11 @@ struct MainWindowView: View {
             } else if model.mainTab == 2 {
                 ToolsView()
                     .environmentObject(model)
-            } else {
+            } else if model.mainTab == 3 {
                 ProView()
+                    .environmentObject(model)
+            } else {
+                PremiumView()
                     .environmentObject(model)
             }
         }
@@ -88,12 +92,20 @@ struct MainWindowView: View {
 
     // MARK: 概览卡片
 
+    /// 温度卡副标题（GPU + 风扇，风扇为 Deluxe 功能）
+    private var tempSubText: String {
+        var s = model.snapshot.gpuTempC.map { "GPU " + Fmt.temp($0) } ?? "GPU 该机型不提供"
+        if model.isDeluxe, let fan = model.snapshot.smcFans.first {
+            s += " · 风扇 \(Int(fan.1)) RPM"
+        }
+        return s
+    }
+
     private var overviewGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-            let gpuSub = model.snapshot.gpuTempC.map { "GPU " + Fmt.temp($0) } ?? "GPU 该机型不提供"
             StatCard(title: "芯片温度", icon: "thermometer", color: .orange,
                      value: Fmt.temp(model.snapshot.cpuTempC),
-                     sub: gpuSub,
+                     sub: tempSubText,
                      progress: model.snapshot.referenceTempC.map { max(0, min(1, $0 / 110)) })
             StatCard(title: "CPU 占用", icon: "cpu", color: .blue,
                      value: String(format: "%.0f%%", model.snapshot.cpuPercentValue),
