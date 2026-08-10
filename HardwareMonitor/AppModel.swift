@@ -815,7 +815,7 @@ final class AppModel: ObservableObject {
         guard CGPreflightScreenCaptureAccess() else {
             let alert = NSAlert()
             alert.messageText = "截图需要屏幕录制权限"
-            alert.informativeText = "请到「系统设置 → 隐私与安全性 → 屏幕录制」打开 HardwareMonitor 的开关，然后重新点截图。"
+            alert.informativeText = "请到「系统设置 → 隐私与安全性 → 屏幕录制」打开 HardwareMonitor 的开关，\n然后**退出 App 并重新打开**（macOS 修改权限后必须重启 App 才生效）。"
             alert.alertStyle = .warning
             alert.addButton(withTitle: "去设置")
             alert.addButton(withTitle: "取消")
@@ -827,18 +827,43 @@ final class AppModel: ObservableObject {
             return
         }
         let path = "/tmp/hwmon-screenshot-\(Int(Date().timeIntervalSince1970)).png"
-        runProcess("/usr/sbin/screencapture", args: ["-x", path])
-        // 验证截图是否真的生成（没权限时会静默失败）
-        let fm = FileManager.default
-        if let size = (try? fm.attributesOfItem(atPath: path)[.size] as? Int) ?? nil, size > 0 {
-            NSWorkspace.shared.open(URL(fileURLWithPath: path))
-        } else {
+        // 同步执行并捕获 stderr（无 stdout 关注）
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        p.arguments = ["-x", path]
+        let errPipe = Pipe()
+        p.standardError = errPipe
+        p.standardOutput = Pipe()
+        do {
+            try p.run()
+            p.waitUntilExit()
+        } catch {
             let alert = NSAlert()
-            alert.messageText = "截图失败"
-            alert.informativeText = "没有检测到截图文件。请检查「系统设置 → 隐私与安全性 → 屏幕录制」是否已允许 HardwareMonitor。"
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "好")
+            alert.messageText = "截图启动失败"
+            alert.informativeText = "无法启动 screencapture：\(error.localizedDescription)"
             alert.runModal()
+            return
+        }
+        let errStr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let exitCode = p.terminationStatus
+        let fm = FileManager.default
+        let size = (try? fm.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
+        if exitCode == 0, size > 0 {
+            NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            return
+        }
+        // 失败诊断：CGPreflight 已 true 但截图仍失败 → 99% 是「权限刚开，App 未重启」
+        let alert = NSAlert()
+        alert.messageText = "截图失败"
+        var detail = "退出码 \(exitCode)，stderr: \(errStr.isEmpty ? "(空)" : errStr)\n\n"
+        detail += "⚠️ macOS 修改屏幕录制权限后必须**退出 App 并重新打开**才会生效。\n\n"
+        detail += "请右键右上角菜单栏图标 → 「退出 HardwareMonitor」，再从「启动台」或「应用程序」重新打开。"
+        alert.informativeText = detail
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "退出 App 并重启")
+        alert.addButton(withTitle: "取消")
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSApp.terminate(nil)
         }
     }
 
