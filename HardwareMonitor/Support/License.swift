@@ -7,11 +7,10 @@ enum License {
     /// 去易混淆字符（0/O/1/I/L）的 base32 字母表
     static let alphabet = Array("ABCDEFGHJKMNPQRSTUVWXYZ23456789")
 
-    /// 校验激活码是否合法
+    /// 校验激活码是否合法（自动清理：连字符/空格/换行/全角符号全部忽略，只保留合法字符）
     static func validate(_ code: String) -> Bool {
-        let s = code.uppercased().filter { $0 != "-" && $0 != " " }
+        let s = code.uppercased().filter { alphabet.contains($0) }
         guard s.count == 22 else { return false }
-        guard s.allSatisfy({ alphabet.contains($0) }) else { return false }
         let data = s.prefix(21)
         var hash: UInt64 = 5381
         for ch in data {
