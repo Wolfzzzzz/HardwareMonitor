@@ -36,8 +36,7 @@ struct MenuBarView: View {
                 Text(title).font(.system(size: 10))
             }
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 6).fill(model.themeCard))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(model.themeBorder, lineWidth: 0.5))
+            .glassButton(cornerRadius: 8)
         }
         .buttonStyle(.plain)
     }
