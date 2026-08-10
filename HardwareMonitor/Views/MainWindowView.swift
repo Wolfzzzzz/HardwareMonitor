@@ -38,7 +38,9 @@ struct MainWindowView: View {
         .tint(model.accentColor)
         .preferredColorScheme(model.preferredColorScheme)
         .frame(minWidth: 780, minHeight: 560)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(
+            LinearGradient(colors: model.currentTheme.gradient, startPoint: .top, endPoint: .bottom)
+        )
     }
 
     /// 监控页内容
