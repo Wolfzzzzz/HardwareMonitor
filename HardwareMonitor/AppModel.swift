@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import CoreGraphics
 import ServiceManagement
 import UserNotifications
 
@@ -810,9 +811,35 @@ final class AppModel: ObservableObject {
     }
 
     func takeScreenshot() {
+        // 屏幕录制权限预检（截图必需）
+        guard CGPreflightScreenCaptureAccess() else {
+            let alert = NSAlert()
+            alert.messageText = "截图需要屏幕录制权限"
+            alert.informativeText = "请到「系统设置 → 隐私与安全性 → 屏幕录制」打开 HardwareMonitor 的开关，然后重新点截图。"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "去设置")
+            alert.addButton(withTitle: "取消")
+            if alert.runModal() == .alertFirstButtonReturn {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            return
+        }
         let path = "/tmp/hwmon-screenshot-\(Int(Date().timeIntervalSince1970)).png"
         runProcess("/usr/sbin/screencapture", args: ["-x", path])
-        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        // 验证截图是否真的生成（没权限时会静默失败）
+        let fm = FileManager.default
+        if let size = (try? fm.attributesOfItem(atPath: path)[.size] as? Int) ?? nil, size > 0 {
+            NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        } else {
+            let alert = NSAlert()
+            alert.messageText = "截图失败"
+            alert.informativeText = "没有检测到截图文件。请检查「系统设置 → 隐私与安全性 → 屏幕录制」是否已允许 HardwareMonitor。"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "好")
+            alert.runModal()
+        }
     }
 
     func toggleHiddenFiles() {
