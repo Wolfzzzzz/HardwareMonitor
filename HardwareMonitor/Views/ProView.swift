@@ -15,6 +15,11 @@ struct ProView: View {
                     pressureSection
                     launchItemsSection
                     hotkeySection
+                    HStack {
+                        Spacer()
+                        Button("退出激活", role: .destructive) { model.deactivatePro() }
+                            .controlSize(.small)
+                    }
                 } else {
                     upgradeSection
                 }
