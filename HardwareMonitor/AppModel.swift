@@ -457,6 +457,30 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// 通知权限状态提示
+    @Published var notificationStatusMessage: String?
+
+    /// 检查（或请求）通知权限
+    func checkNotificationPermission() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let msg: String
+            switch settings.authorizationStatus {
+            case .authorized: msg = "通知权限已开启 ✅"
+            case .denied: msg = "通知权限被拒绝 ❌ 请到 系统设置 → 通知 → HardwareMonitor 打开"
+            case .notDetermined: msg = "尚未询问，正在请求…"
+            default: msg = "通知权限状态未知"
+            }
+            Task { @MainActor in self.notificationStatusMessage = msg }
+            if settings.authorizationStatus == .notDetermined {
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { ok, _ in
+                    Task { @MainActor in
+                        self.notificationStatusMessage = ok ? "通知权限已开启 ✅" : "通知权限被拒绝 ❌ 请到 系统设置 → 通知 → HardwareMonitor 打开"
+                    }
+                }
+            }
+        }
+    }
+
     private func refreshAlertActive(_ snap: SystemSnapshot) {
         var active = false
         if let t = snap.cpuTempC, t >= cpuTempThreshold { active = true }
