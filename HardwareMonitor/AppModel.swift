@@ -297,6 +297,9 @@ final class AppModel: ObservableObject {
             let cpuPercent: Double
             let memPercent: Double
             let batteryPercent: Int?
+            let netDownMBs: Double
+            let netUpMBs: Double
+            let topProc: String?
             let timestamp: Date
         }
         let obj = Shared(
@@ -304,6 +307,9 @@ final class AppModel: ObservableObject {
             cpuPercent: snap.cpuPercentValue,
             memPercent: snap.memPercentValue,
             batteryPercent: snap.batteryPercent,
+            netDownMBs: snap.netDown / 1024 / 1024,
+            netUpMBs: snap.netUp / 1024 / 1024,
+            topProc: snap.topProcesses.first?.name,
             timestamp: Date()
         )
         guard let data = try? JSONEncoder().encode(obj) else { return }
@@ -791,6 +797,34 @@ final class AppModel: ObservableObject {
     /// 显示器休眠
     func sleepDisplay() {
         runProcess("/usr/bin/pmset", args: ["displaysleepnow"])
+    }
+
+    // MARK: - 快捷操作（菜单栏面板）
+
+    @Published var showHiddenFiles: Bool = UserDefaults.standard.bool(forKey: "showHiddenFiles")
+
+    func clearUserCaches() {
+        let fm = FileManager.default
+        let home = NSHomeDirectory()
+        try? fm.removeItem(atPath: "\(home)/Library/Caches")
+    }
+
+    func takeScreenshot() {
+        let path = "/tmp/hwmon-screenshot-\(Int(Date().timeIntervalSince1970)).png"
+        runProcess("/usr/sbin/screencapture", args: ["-x", path])
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    }
+
+    func toggleHiddenFiles() {
+        showHiddenFiles.toggle()
+        UserDefaults.standard.set(showHiddenFiles, forKey: "showHiddenFiles")
+        runProcess("/usr/bin/defaults", args: ["write", "com.apple.finder", "AppleShowAllFiles", showHiddenFiles ? "-bool" : "-bool", showHiddenFiles ? "YES" : "NO"])
+        runProcess("/usr/bin/killall", args: ["Finder"])
+    }
+
+    func killTopProcess() {
+        guard let p = snapshot.topProcesses.first else { return }
+        runProcess("/bin/kill", args: ["-9", String(p.pid)])
     }
 
     /// 清空系统剪贴板
