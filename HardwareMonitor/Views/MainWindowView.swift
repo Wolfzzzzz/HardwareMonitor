@@ -39,7 +39,7 @@ struct MainWindowView: View {
         .preferredColorScheme(model.preferredColorScheme)
         .frame(minWidth: 780, minHeight: 560)
         .background(
-            LinearGradient(colors: model.currentTheme.gradient, startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
         )
     }
 
