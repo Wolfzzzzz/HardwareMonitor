@@ -5,7 +5,7 @@ import Foundation
 /// 前 21 字符为数据（随机），末 1 字符为校验码（DJB2 哈希 mod 32）
 enum License {
     /// 去易混淆字符（0/O/1/I/L）的 base32 字母表
-    static let alphabet = Array("ABCDEFGHJKMNPQRSTUVWXYZ23456789")
+    static let alphabet = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
 
     /// 校验激活码是否合法（自动清理：连字符/空格/换行/全角符号全部忽略，只保留合法字符）
     static func validate(_ code: String) -> Bool {
