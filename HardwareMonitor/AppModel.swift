@@ -47,12 +47,18 @@ final class AppModel: ObservableObject {
 
     // MARK: - 专业功能（Pro）
 
-    /// 主题强调色：system/blue/purple/green/orange/red
-    @Published var themeID: String = "system" { didSet { UserDefaults.standard.set(themeID, forKey: "themeID") } }
+    /// 主题皮肤 id（aurora/ocean/forest/magma/sakura/graphite）
+    @Published var themeID: String = "aurora" { didSet { UserDefaults.standard.set(themeID, forKey: "themeID") } }
     /// 外观强制：system/dark/light
     @Published var appearanceID: String = "system" { didSet { UserDefaults.standard.set(appearanceID, forKey: "appearanceID") } }
-    /// Dock 图标角标显示 CPU 温度
-    @Published var dockBadgeEnabled: Bool = false { didSet { UserDefaults.standard.set(dockBadgeEnabled, forKey: "dockBadgeEnabled"); updateDockBadge() } }
+    /// Dock 图标角标显示 CPU 温度（开启时切到普通模式让 Dock 图标可见）
+    @Published var dockBadgeEnabled: Bool = false {
+        didSet {
+            UserDefaults.standard.set(dockBadgeEnabled, forKey: "dockBadgeEnabled")
+            NSApp.setActivationPolicy(dockBadgeEnabled ? .regular : .accessory)
+            updateDockBadge()
+        }
+    }
 
     /// 远程监控
     @Published var remoteEnabled: Bool = false { didSet { UserDefaults.standard.set(remoteEnabled, forKey: "remoteEnabled") } }
@@ -80,17 +86,11 @@ final class AppModel: ObservableObject {
 
     // MARK: - 主题
 
+    /// 当前主题皮肤
+    var currentTheme: ThemeConfig { AppThemes.byID(themeID) }
+
     /// 当前强调色（主题）
-    var accentColor: Color {
-        switch themeID {
-        case "purple": return Color(red: 0.74, green: 0.55, blue: 1.0)
-        case "green": return Color(red: 0.25, green: 0.78, blue: 0.45)
-        case "orange": return Color(red: 1.0, green: 0.62, blue: 0.28)
-        case "red": return Color(red: 1.0, green: 0.42, blue: 0.42)
-        case "blue": return Color(red: 0.35, green: 0.62, blue: 1.0)
-        default: return .accentColor
-        }
-    }
+    var accentColor: Color { currentTheme.accent }
 
     /// 外观强制
     var preferredColorScheme: ColorScheme? {
@@ -304,9 +304,12 @@ final class AppModel: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         appLanguage = d.string(forKey: "appLanguage") ?? "system"
         pendingLanguage = appLanguage
-        themeID = d.string(forKey: "themeID") ?? "system"
+        themeID = d.string(forKey: "themeID") ?? "aurora"
         appearanceID = d.string(forKey: "appearanceID") ?? "system"
         dockBadgeEnabled = d.bool(forKey: "dockBadgeEnabled")
+        // init 中首次赋值不触发 didSet，需手动同步激活模式
+        NSApp.setActivationPolicy(dockBadgeEnabled ? .regular : .accessory)
+        updateDockBadge()
         remoteEnabled = d.bool(forKey: "remoteEnabled")
         remotePort = d.object(forKey: "remotePort") == nil ? 8900 : d.integer(forKey: "remotePort")
         pressureThreads = d.object(forKey: "pressureThreads") == nil ? 4 : d.double(forKey: "pressureThreads")
