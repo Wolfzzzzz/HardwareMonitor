@@ -64,6 +64,10 @@ struct ProView: View {
                     TextField("XXXX-XXXX-XXXX-XXXX-XXXXX-X", text: $model.licenseInput)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
+                    Button("粘贴") {
+                        model.licenseInput = NSPasteboard.general.string(forType: .string) ?? ""
+                    }
+                    .disabled(NSPasteboard.general.string(forType: .string)?.isEmpty != false)
                     Button("激活") {
                         if model.tryActivate(model.licenseInput) {
                             model.licenseInput = ""
