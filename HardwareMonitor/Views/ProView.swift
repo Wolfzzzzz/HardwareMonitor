@@ -8,14 +8,99 @@ struct ProView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                remoteSection
-                appearanceSection
-                reportSection
-                pressureSection
-                launchItemsSection
-                hotkeySection
+                if model.proUnlocked {
+                    remoteSection
+                    appearanceSection
+                    reportSection
+                    pressureSection
+                    launchItemsSection
+                    hotkeySection
+                } else {
+                    upgradeSection
+                }
             }
             .padding(18)
+        }
+    }
+
+    // MARK: Pro 升级 / 激活
+
+    private var upgradeSection: some View {
+        VStack(spacing: 14) {
+            VStack(spacing: 8) {
+                Label("HardwareMonitor Pro", systemImage: "crown.fill")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(model.accentColor)
+                Text("买断价 \(model.proPriceText)，一次购买永久使用")
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pro 包含：")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                featureRow("局域网远程监控", "手机浏览器实时查看本机状态")
+                featureRow("6 套主题皮肤", "深/浅色双配色，跟随外观自动切换")
+                featureRow("Dock 温度角标", "Dock 图标直接显示 CPU 温度")
+                featureRow("性能报告导出", "历史数据导出 CSV")
+                featureRow("CPU 压力测试", "满载压测散热与稳定性")
+                featureRow("启动项管理", "查看登录启动项")
+                featureRow("全局快捷键", "⌃⌘⌥ 组合快速操作")
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(model.themeCard)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("已有激活码？输入后立即解锁")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    TextField("XXXX-XXXX-XXXX-XXXX-XXXXX-X", text: $model.licenseInput)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                    Button("激活") {
+                        if model.tryActivate(model.licenseInput) {
+                            model.licenseInput = ""
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.licenseInput.isEmpty)
+                }
+                if let msg = model.licenseMessage {
+                    Text(msg)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                Text("激活码请联系开发者获取。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(model.themeCard)
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(model.themeBorder, lineWidth: 1))
+        )
+    }
+
+    private func featureRow(_ name: String, _ desc: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(model.accentColor)
+                .font(.system(size: 13))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name).font(.callout)
+                Text(desc).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
         }
     }
 
