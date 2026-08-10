@@ -156,7 +156,7 @@ final class SMCReader {
     private func discoverKeys(count: Int) {
         var temps: [String] = []
         var fans: [String] = []
-        for i in 0..<min(count, 800) {
+        for i in 0..<min(count, 4096) {
             guard let name = keyName(at: i) else { continue }
             guard let (data, type) = readKey(name) else { continue }
             let t = type.trimmingCharacters(in: .whitespaces)
