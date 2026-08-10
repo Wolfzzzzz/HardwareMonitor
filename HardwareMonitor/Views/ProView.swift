@@ -56,6 +56,48 @@ struct ProView: View {
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
             )
 
+            VStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: "qrcode.viewfinder").foregroundStyle(.green)
+                    Text("微信支付").font(.caption.weight(.semibold))
+                }
+                if let url = Bundle.main.url(forResource: "wechat_qrcode", withExtension: "jpg"),
+                   let img = NSImage(contentsOf: url) {
+                    Image(nsImage: img)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 180, height: 180)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else if let url = Bundle.main.url(forResource: "wechat_qrcode", withExtension: "png"),
+                          let img = NSImage(contentsOf: url) {
+                    Image(nsImage: img)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 180, height: 180)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(model.themeCard)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
+                        VStack(spacing: 6) {
+                            Image(systemName: "qrcode")
+                                .font(.system(size: 40))
+                                .foregroundStyle(.secondary)
+                            Text("微信收款码加载中")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 180, height: 180)
+                }
+                Text("微信扫一扫 → 转账 \(model.proPriceText) → 回来粘贴激活码立即解锁")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("已有激活码？输入后立即解锁")
                     .font(.caption)
