@@ -47,6 +47,28 @@ final class AppModel: ObservableObject {
 
     // MARK: - 专业功能（Pro）
 
+    /// Pro 是否已解锁（激活码激活，持久化）
+    @Published var proUnlocked: Bool = false
+    /// 激活提示信息
+    @Published var licenseMessage: String?
+    /// 激活码输入框内容
+    @Published var licenseInput = ""
+    /// Pro 买断价格
+    let proPriceText = "¥38"
+
+    /// 尝试用激活码解锁 Pro
+    func tryActivate(_ code: String) -> Bool {
+        if License.validate(code) {
+            proUnlocked = true
+            UserDefaults.standard.set(true, forKey: "proUnlocked")
+            licenseMessage = nil
+            return true
+        } else {
+            licenseMessage = "激活码无效，请检查后重试"
+            return false
+        }
+    }
+
     /// 主题皮肤 id（aurora/ocean/forest/magma/sakura/graphite）
     @Published var themeID: String = "aurora" { didSet { UserDefaults.standard.set(themeID, forKey: "themeID") } }
     /// 外观强制：system/dark/light
@@ -339,6 +361,7 @@ final class AppModel: ObservableObject {
         pendingLanguage = appLanguage
         themeID = d.string(forKey: "themeID") ?? "aurora"
         appearanceID = d.string(forKey: "appearanceID") ?? "system"
+        proUnlocked = d.bool(forKey: "proUnlocked")
         dockBadgeEnabled = d.bool(forKey: "dockBadgeEnabled")
         // init 中首次赋值不触发 didSet，需手动同步激活模式
         NSApp.setActivationPolicy(dockBadgeEnabled ? .regular : .accessory)
