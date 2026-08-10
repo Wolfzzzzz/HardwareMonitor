@@ -55,7 +55,7 @@ final class AppModel: ObservableObject {
     @Published var dockBadgeEnabled: Bool = false {
         didSet {
             UserDefaults.standard.set(dockBadgeEnabled, forKey: "dockBadgeEnabled")
-            NSApp.setActivationPolicy(dockBadgeEnabled ? .regular : .accessory)
+            switchActivationPolicy(dockVisible: dockBadgeEnabled)
             updateDockBadge()
         }
     }
@@ -98,6 +98,24 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - Dock 温度角标
+
+    /// 切换激活模式时保护主窗口：切回 accessory 前先把窗口隐藏（否则系统会关闭它，表现为"闪退"），切换后再恢复
+    private func switchActivationPolicy(dockVisible: Bool) {
+        let wasMainVisible = mainWindowVisible
+        let mainWin = NSApp.windows.first { $0.title == "硬件监控" }
+        if !dockVisible, let mainWin, mainWin.isVisible {
+            mainWin.orderOut(nil)
+        }
+        NSApp.setActivationPolicy(dockVisible ? .regular : .accessory)
+        if !dockVisible, wasMainVisible, let mainWin {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                // 窗口可能已被系统销毁，需确认仍存在
+                guard NSApp.windows.contains(where: { $0 === mainWin }) else { return }
+                mainWin.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+    }
 
     func updateDockBadge() {
         if dockBadgeEnabled, let t = snapshot.cpuTempC {
