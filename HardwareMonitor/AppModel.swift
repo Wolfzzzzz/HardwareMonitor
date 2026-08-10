@@ -89,8 +89,23 @@ final class AppModel: ObservableObject {
     /// 当前主题皮肤
     var currentTheme: ThemeConfig { AppThemes.byID(themeID) }
 
+    /// 是否深色外观（考虑"外观模式"设置 + 系统跟随）
+    var isDarkMode: Bool {
+        switch appearanceID {
+        case "dark": return true
+        case "light": return false
+        default: return NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        }
+    }
+
     /// 当前强调色（主题）
     var accentColor: Color { currentTheme.accent }
+    /// 当前皮肤背景渐变（随外观模式切换深浅套）
+    var themeGradient: [Color] { currentTheme.gradient(isDark: isDarkMode) }
+    /// 当前皮肤卡片色
+    var themeCard: Color { currentTheme.card(isDark: isDarkMode) }
+    /// 当前皮肤卡片描边
+    var themeBorder: Color { currentTheme.border(isDark: isDarkMode) }
 
     /// 外观强制
     var preferredColorScheme: ColorScheme? {
