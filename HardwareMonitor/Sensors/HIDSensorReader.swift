@@ -108,7 +108,6 @@ final class HIDSensorReader {
             return ([], nil, nil)
         }
         var temps: [(String, Double)] = []
-        var tdieMax: Double?
         for svc in services {
             guard let ev = copyEvent(svc.ref, 15, 0, 0xFF00, svc.usage)?.takeRetainedValue() else { continue }
             let t = eventType(ev)
@@ -116,11 +115,8 @@ final class HIDSensorReader {
             // 过滤无效读数
             guard v.isFinite, v > -50, v < 150 else { continue }
             temps.append((svc.name, v))
-            if svc.name.lowercased().contains("tdie") {
-                tdieMax = max(tdieMax ?? -1000, v)
-            }
         }
         temps.sort { $0.0 < $1.0 }
-        return (temps, tdieMax, nil)
+        return (temps, temps.map { $0.1 }.max(), nil)
     }
 }
