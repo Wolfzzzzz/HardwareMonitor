@@ -67,7 +67,7 @@ struct DashboardView: View {
         .padding(14)
         .frame(width: 400, height: 600)
         .background(
-            LinearGradient(colors: model.currentTheme.gradient, startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
         )
     }
 
@@ -293,10 +293,10 @@ struct StatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(model.currentTheme.card)
+                .fill(model.themeCard)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(model.currentTheme.cardBorder, lineWidth: 1)
+                        .stroke(model.themeBorder, lineWidth: 1)
                 )
         )
     }
