@@ -90,9 +90,10 @@ struct MainWindowView: View {
 
     private var overviewGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            let gpuSub = model.snapshot.gpuTempC.map { "GPU " + Fmt.temp($0) } ?? "GPU 该机型不提供"
             StatCard(title: "芯片温度", icon: "thermometer", color: .orange,
                      value: Fmt.temp(model.snapshot.cpuTempC),
-                     sub: "GPU " + Fmt.temp(model.snapshot.gpuTempC),
+                     sub: gpuSub,
                      progress: model.snapshot.referenceTempC.map { max(0, min(1, $0 / 110)) })
             StatCard(title: "CPU 占用", icon: "cpu", color: .blue,
                      value: String(format: "%.0f%%", model.snapshot.cpuPercentValue),
