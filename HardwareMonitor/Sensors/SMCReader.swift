@@ -192,14 +192,13 @@ final class SMCReader {
         }
 
         // CPU 温度：Apple Silicon 取 Tp*/Tf* 最大值作为参考（P-core），GPU 取 Tg*/Tf1*
-        var cpuTemp: Double?
+        // CPU 温度：取所有温度键最大值（对齐第三方工具读数，含 TCAL/TC0P/TPxx 等）
+        var cpuTemp = temps.map { $0.1 }.max()
         var gpuTemp: Double?
         for (key, v) in temps {
             let k = key.uppercased()
             if k.hasPrefix("TG") || (k.hasPrefix("TF") && k.dropFirst(2).first == "1") {
                 gpuTemp = max(gpuTemp ?? -1000, v)
-            } else if k.hasPrefix("TP") || k.hasPrefix("TC") || k.hasPrefix("TE") || k.hasPrefix("TF") {
-                cpuTemp = max(cpuTemp ?? -1000, v)
             }
         }
         // 风扇 key 排序，取 Ac 结尾为实际转速
