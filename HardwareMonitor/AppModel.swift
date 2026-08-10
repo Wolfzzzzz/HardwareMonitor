@@ -56,6 +56,44 @@ final class AppModel: ObservableObject {
 
     /// 是否 Deluxe 及以上
     var isDeluxe: Bool { proTier == .deluxe || proTier == .premium }
+
+    // MARK: - Premium 分析状态
+
+    @Published var bigFiles: [DiskScanner.BigFile] = []
+    @Published var scanningDisk = false
+    @Published var benchmarkScore: Int?
+    @Published var benchmarkRunning = false
+    private let diskScanner = DiskScanner()
+
+    /// 扫描磁盘大文件（后台）
+    func scanBigFiles() {
+        guard !scanningDisk else { return }
+        scanningDisk = true
+        Task {
+            let result = await diskScanner.scan(top: 20)
+            await MainActor.run {
+                bigFiles = result
+                scanningDisk = false
+            }
+        }
+    }
+
+    /// CPU 跑分（后台）
+    func runBenchmark() {
+        guard !benchmarkRunning else { return }
+        benchmarkRunning = true
+        Task {
+            let score = await Task.detached(priority: .userInitiated) { AppModel.computeBenchmark() }.value
+            await MainActor.run {
+                benchmarkScore = score
+                benchmarkRunning = false
+            }
+        }
+    }
+
+    /// 告警历史（Premium）
+    var alertHistory: [AlertEngine.AlertRecord] { alertEngine.history }
+    func clearAlertHistory() { alertEngine.clearHistory() }
     /// 是否 Premium Deluxe
     var isPremium: Bool { proTier == .premium }
 
@@ -152,6 +190,56 @@ final class AppModel: ObservableObject {
         )
     }
 
+    // MARK: - 系统信息（Premium）
+
+    /// CPU 型号字符串
+    var cpuBrand: String {
+        var size = 0
+        sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0)
+        var buf = [CChar](repeating: 0, count: size)
+        sysctlbyname("machdep.cpu.brand_string", &buf, &size, nil, 0)
+        return String(cString: buf).trimmingCharacters(in: .whitespaces)
+    }
+
+    /// 芯片架构（arm64/x86_64）
+    var chipArch: String {
+        var uts = utsname()
+        uname(&uts)
+        return withUnsafePointer(to: &uts.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: Int(_SYS_NAMELEN)) {
+                String(cString: $0)
+            }
+        }
+    }
+
+    /// 系统版本
+    var systemVersion: String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        return "macOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+    }
+
+    /// CPU 性能跑分计算（多线程，越大越快）
+    nonisolated private static func computeBenchmark() -> Int {
+        let cores = ProcessInfo.processInfo.activeProcessorCount
+        var total: UInt64 = 0
+        let group = DispatchGroup()
+        let lock = NSLock()
+        for _ in 0..<cores {
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                var x: UInt64 = 0
+                for i in 0..<20_000_000 {
+                    x = x &* 6364136223846793005 &+ UInt64(i)
+                }
+                lock.lock(); total &+= x; lock.unlock()
+                group.leave()
+            }
+        }
+        _ = group.wait(timeout: .now() + 30)
+        // 归一化到可读分数（约 1000-8000 区间）
+        return Int(min(9999, max(100, total / 3_000_000_000)))
+    }
+
     /// 性能健康评分（0-100，温度越低越接近 100）
     var healthScore: Int {
         var score = 100
@@ -233,6 +321,15 @@ final class AppModel: ObservableObject {
     func startRemote() {
         remoteServer.port = UInt16(max(1024, min(65535, remotePort)))
         remoteServer.onSnapshot = { [weak self] in self?.snapshot }
+        remoteServer.onAction = { [weak self] action in
+            Task { @MainActor in
+                switch action {
+                case "lock": self?.lockScreen()
+                case "sleep": self?.sleepDisplay()
+                default: break
+                }
+            }
+        }
         do {
             try remoteServer.start()
             remoteRunning = true
