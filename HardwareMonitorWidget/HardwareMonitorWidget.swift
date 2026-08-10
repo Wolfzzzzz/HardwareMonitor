@@ -7,6 +7,9 @@ struct HWSharedSnapshot: Codable {
     var cpuPercent: Double
     var memPercent: Double
     var batteryPercent: Int?
+    var netDownMBs: Double
+    var netUpMBs: Double
+    var topProc: String?
     var timestamp: Date
 }
 
@@ -19,7 +22,7 @@ struct HWProvider: TimelineProvider {
     private let suite = "group.com.zzn.hardwaremonitor"
 
     func placeholder(in context: Context) -> HWEntry {
-        HWEntry(date: Date(), snap: HWSharedSnapshot(cpuTemp: 42, cpuPercent: 0.15, memPercent: 0.5, batteryPercent: 80, timestamp: Date()))
+        HWEntry(date: Date(), snap: HWSharedSnapshot(cpuTemp: 42, cpuPercent: 0.15, memPercent: 0.5, batteryPercent: 80, netDownMBs: 1.2, netUpMBs: 0.3, topProc: "Safari", timestamp: Date()))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (HWEntry) -> Void) {
@@ -120,10 +123,131 @@ struct HWWidgetView: View {
     }
 }
 
+/// 通用 widget 工具：共享读取
+enum HWShared {
+    static let suite = "group.com.zzn.hardwaremonitor"
+    static func read() -> HWSharedSnapshot? {
+        guard let d = UserDefaults(suiteName: suite)?.data(forKey: "hwmon_snapshot") else { return nil }
+        return try? JSONDecoder().decode(HWSharedSnapshot.self, from: d)
+    }
+}
+
+/// 网络 widget
+struct HWNetWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "HWNetWidget", provider: HWProvider()) { entry in
+            HWNetWidgetView(entry: entry)
+        }
+        .configurationDisplayName("网络实时")
+        .description("上下行网速")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+struct HWNetWidgetView: View {
+    let entry: HWEntry
+    var body: some View {
+        if let s = entry.snap {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("网络", systemImage: "wifi").font(.caption.weight(.semibold)).foregroundStyle(.cyan)
+                HStack {
+                    Text("↓").font(.caption2).foregroundStyle(.secondary)
+                    Text(String(format: "%.1f MB/s", s.netDownMBs))
+                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .monospacedDigit()
+                }
+                HStack {
+                    Text("↑").font(.caption2).foregroundStyle(.secondary)
+                    Text(String(format: "%.1f MB/s", s.netUpMBs))
+                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .monospacedDigit()
+                }
+                Spacer(minLength: 0)
+            }
+            .containerBackground(for: .widget) { Color(.sRGB, red: 0.04, green: 0.10, blue: 0.18) }
+        } else {
+            Text("打开硬件监控以启用")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .containerBackground(for: .widget) { Color(.sRGB, red: 0.04, green: 0.10, blue: 0.18) }
+        }
+    }
+}
+
+/// 电池 widget
+struct HWBatteryWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "HWBatteryWidget", provider: HWProvider()) { entry in
+            HWBatteryWidgetView(entry: entry)
+        }
+        .configurationDisplayName("电池")
+        .description("电量与温度")
+        .supportedFamilies([.systemSmall])
+    }
+}
+
+struct HWBatteryWidgetView: View {
+    let entry: HWEntry
+    var body: some View {
+        if let s = entry.snap, let b = s.batteryPercent {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("电池", systemImage: "battery.75percent").font(.caption.weight(.semibold)).foregroundStyle(.green)
+                Text("\(b)%")
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                Text(s.topProc.map { "Top: \($0)" } ?? "—")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+            .containerBackground(for: .widget) { Color(.sRGB, red: 0.05, green: 0.13, blue: 0.07) }
+        } else {
+            Text("未检测到电池")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .containerBackground(for: .widget) { Color(.sRGB, red: 0.05, green: 0.13, blue: 0.07) }
+        }
+    }
+}
+
+/// 进程 widget
+struct HWProcessWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "HWProcessWidget", provider: HWProvider()) { entry in
+            HWProcessWidgetView(entry: entry)
+        }
+        .configurationDisplayName("进程 TOP")
+        .description("占用最高进程")
+        .supportedFamilies([.systemSmall])
+    }
+}
+
+struct HWProcessWidgetView: View {
+    let entry: HWEntry
+    var body: some View {
+        if let s = entry.snap, let p = s.topProc {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("TOP 进程", systemImage: "list.number").font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                Text(p).font(.callout.weight(.semibold)).lineLimit(1).truncationMode(.middle)
+                Text(String(format: "CPU %.0f%% · 内存 %.0f%%", s.cpuPercent * 100, s.memPercent * 100))
+                    .font(.caption2).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+            .containerBackground(for: .widget) { Color(.sRGB, red: 0.18, green: 0.10, blue: 0.04) }
+        } else {
+            Text("暂无进程数据").font(.caption).foregroundStyle(.secondary)
+                .containerBackground(for: .widget) { Color(.sRGB, red: 0.18, green: 0.10, blue: 0.04) }
+        }
+    }
+}
+
 @main
 struct HWTWidgetBundle: WidgetBundle {
     var body: some Widget {
         HWWidget()
+        HWNetWidget()
+        HWBatteryWidget()
+        HWProcessWidget()
     }
 }
 
