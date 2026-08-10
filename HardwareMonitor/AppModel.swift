@@ -822,9 +822,29 @@ final class AppModel: ObservableObject {
         runProcess("/usr/bin/killall", args: ["Finder"])
     }
 
+    /// 杀占用：排除自身与系统关键进程，并弹确认框防止误杀
     func killTopProcess() {
-        guard let p = snapshot.topProcesses.first else { return }
-        runProcess("/bin/kill", args: ["-9", String(p.pid)])
+        let myPID = ProcessInfo.processInfo.processIdentifier
+        // 系统关键进程与自身黑名单（误杀会导致崩溃/黑屏）
+        let protectedNames: Set<String> = [
+            "kernel_task", "WindowServer", "launchd", "loginwindow",
+            "SystemUIServer", "Finder", "ControlCenter", "HardwareMonitor",
+            "sysmond", "runningboardd", "backboardd", "notifyd"
+        ]
+        // 在 TOP 列表里找第一个可安全结束的进程
+        guard let p = snapshot.topProcesses.first(where: {
+            $0.pid != myPID && !protectedNames.contains($0.name)
+        }) else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "确定要结束进程吗？"
+        alert.informativeText = "将强制结束「\(p.name)」(PID \(p.pid))。\n\n正在运行的程序会被立即关闭，未保存的内容可能丢失。"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "结束进程")
+        alert.addButton(withTitle: "取消")
+        if alert.runModal() == .alertFirstButtonReturn {
+            runProcess("/bin/kill", args: ["-9", String(p.pid)])
+        }
     }
 
     /// 清空系统剪贴板
