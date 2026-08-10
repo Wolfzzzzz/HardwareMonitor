@@ -56,6 +56,13 @@ final class AppModel: ObservableObject {
     /// Pro 买断价格
     let proPriceText = "¥38"
 
+    /// 退出激活（回到免费版）
+    func deactivatePro() {
+        proUnlocked = false
+        UserDefaults.standard.set(false, forKey: "proUnlocked")
+        licenseMessage = nil
+    }
+
     /// 尝试用激活码解锁 Pro
     func tryActivate(_ code: String) -> Bool {
         if License.validate(code) {
