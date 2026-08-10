@@ -25,11 +25,13 @@ struct ChartsView: View {
             Chart(history) { p in
                 if let t = p.cpuTemp {
                     LineMark(x: .value("时间", p.time), y: .value("CPU", t))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.35))
+                        .lineStyle(StrokeStyle(lineWidth: 2.5))
                 }
                 if let g = p.gpuTemp {
                     LineMark(x: .value("时间", p.time), y: .value("GPU", g))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color(red: 1.0, green: 0.45, blue: 0.45))
+                        .lineStyle(StrokeStyle(lineWidth: 2.5))
                 }
             }
             .chartYScale(domain: 20...110)
@@ -44,7 +46,8 @@ struct ChartsView: View {
                 .foregroundStyle(.secondary)
             Chart(history) { p in
                 LineMark(x: .value("时间", p.time), y: .value("CPU", p.cpuPercent))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Color(red: 0.45, green: 0.68, blue: 1.0))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5))
                     .interpolationMethod(.monotone)
             }
             .chartYScale(domain: 0...100)
@@ -59,7 +62,8 @@ struct ChartsView: View {
                 .foregroundStyle(.secondary)
             Chart(history) { p in
                 LineMark(x: .value("时间", p.time), y: .value("内存", p.memPercent))
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(Color(red: 0.78, green: 0.62, blue: 1.0))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5))
                     .interpolationMethod(.monotone)
             }
             .chartYScale(domain: 0...100)
