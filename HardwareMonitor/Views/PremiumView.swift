@@ -388,14 +388,7 @@ private struct AdvancedCard<Content: View>: View {
             content
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        .glassBackground(cornerRadius: 12)
     }
 }
 
