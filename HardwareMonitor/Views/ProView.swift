@@ -17,8 +17,7 @@ struct ProView: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(model.themeCard))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
+                    .glassBackground(cornerRadius: 12)
 
                     remoteSection
                     appearanceSection
@@ -186,12 +185,13 @@ struct ProView: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(model.themeCard)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(current ? accent : model.themeBorder, lineWidth: current ? 2 : 1)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(current ? accent : .white.opacity(0.2), lineWidth: current ? 2 : 1)
                 )
+                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
         )
     }
 
@@ -207,8 +207,7 @@ struct ProView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(model.themeCard))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
+        .glassBackground(cornerRadius: 12)
     }
 
     /// Deluxe 升级 Premium 引导
@@ -226,8 +225,7 @@ struct ProView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(model.themeCard))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.5), lineWidth: 1))
+        .glassBackground(cornerRadius: 12)
     }
 
     private func featureRow(_ name: String, _ desc: String) -> some View {
@@ -465,13 +463,6 @@ private struct SectionCard<Content: View>: View {
             content
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        .glassBackground(cornerRadius: 12)
     }
 }
