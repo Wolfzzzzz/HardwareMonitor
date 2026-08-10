@@ -61,7 +61,7 @@ struct ProView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 8) {
-                    TextField("XXXX-XXXX-XXXX-XXXX-XXXXX-X", text: $model.licenseInput)
+                    TextField("粘贴或输入激活码", text: $model.licenseInput)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                     Button("粘贴") {
