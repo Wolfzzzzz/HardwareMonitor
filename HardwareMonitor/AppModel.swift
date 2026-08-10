@@ -290,6 +290,26 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// 写入 App Group 共享快照（桌面小组件读取）
+    private func writeSharedSnapshot(_ snap: SystemSnapshot) {
+        struct Shared: Codable {
+            let cpuTemp: Double?
+            let cpuPercent: Double
+            let memPercent: Double
+            let batteryPercent: Int?
+            let timestamp: Date
+        }
+        let obj = Shared(
+            cpuTemp: snap.cpuTempC,
+            cpuPercent: snap.cpuPercentValue,
+            memPercent: snap.memPercentValue,
+            batteryPercent: snap.batteryPercent,
+            timestamp: Date()
+        )
+        guard let data = try? JSONEncoder().encode(obj) else { return }
+        UserDefaults(suiteName: "group.com.zzn.hardwaremonitor")?.set(data, forKey: "hwmon_snapshot")
+    }
+
     // MARK: - 远程监控
 
     var localIP: String? {
@@ -553,6 +573,7 @@ final class AppModel: ObservableObject {
             self.alertEngine.check(snap, model: self)
             self.refreshAlertActive(snap)
             self.updateDockBadge()
+            self.writeSharedSnapshot(snap)
         }
         hub.start(interval: refreshInterval)
         hub.sampleNow()
