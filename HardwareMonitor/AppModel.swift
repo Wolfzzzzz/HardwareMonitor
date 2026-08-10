@@ -47,33 +47,36 @@ final class AppModel: ObservableObject {
 
     // MARK: - 专业功能（Pro）
 
-    /// Pro 是否已解锁（激活码激活，持久化）
-    @Published var proUnlocked: Bool = false
+    /// 当前版本档位（激活码激活，持久化）：free / deluxe / premium
+    @Published var proTier: ProTier = .free
     /// 激活提示信息
     @Published var licenseMessage: String?
     /// 激活码输入框内容
     @Published var licenseInput = ""
-    /// Pro 买断价格
-    let proPriceText = "¥38"
 
-    /// 退出激活（回到免费版）
+    /// 是否 Deluxe 及以上
+    var isDeluxe: Bool { proTier == .deluxe || proTier == .premium }
+    /// 是否 Premium Deluxe
+    var isPremium: Bool { proTier == .premium }
+
+    /// 退出激活（回到 Standard 免费版）
     func deactivatePro() {
-        proUnlocked = false
-        UserDefaults.standard.set(false, forKey: "proUnlocked")
+        proTier = .free
+        UserDefaults.standard.set("free", forKey: "proTier")
         licenseMessage = nil
     }
 
-    /// 尝试用激活码解锁 Pro
+    /// 尝试用激活码解锁（按激活码档位激活对应版本）
     func tryActivate(_ code: String) -> Bool {
-        if License.validate(code) {
-            proUnlocked = true
-            UserDefaults.standard.set(true, forKey: "proUnlocked")
-            licenseMessage = nil
-            return true
-        } else {
+        let tier = License.tier(of: code)
+        guard tier != .free else {
             licenseMessage = "激活码无效，请检查后重试"
             return false
         }
+        proTier = tier
+        UserDefaults.standard.set(tier.rawValue, forKey: "proTier")
+        licenseMessage = nil
+        return true
     }
 
     /// 主题皮肤 id（aurora/ocean/forest/magma/sakura/graphite）
@@ -127,8 +130,38 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// 当前强调色（主题）
-    var accentColor: Color { currentTheme.accent }
+    /// 自定义强调色（Premium Deluxe 专属，hex 持久化）
+    @Published var customAccentHex: String = "FF9F43" { didSet { UserDefaults.standard.set(customAccentHex, forKey: "customAccentHex") } }
+
+    /// 当前强调色（主题；custom 主题用自定义色）
+    var accentColor: Color {
+        if themeID == "custom", isPremium {
+            return colorFromHex(customAccentHex)
+        }
+        return currentTheme.accent
+    }
+
+    func colorFromHex(_ hex: String) -> Color {
+        var h = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        if h.count == 6 { h = "FF" + h }
+        guard let val = UInt64(h, radix: 16) else { return .accentColor }
+        return Color(
+            red: Double((val >> 16) & 0xFF) / 255,
+            green: Double((val >> 8) & 0xFF) / 255,
+            blue: Double(val & 0xFF) / 255
+        )
+    }
+
+    /// 性能健康评分（0-100，温度越低越接近 100）
+    var healthScore: Int {
+        var score = 100
+        if let t = snapshot.cpuTempC {
+            if t > 95 { score -= 40 } else if t > 85 { score -= 25 } else if t > 75 { score -= 12 } else if t > 65 { score -= 5 }
+        }
+        if snapshot.cpuPercentValue > 0.9 { score -= 10 } else if snapshot.cpuPercentValue > 0.75 { score -= 5 }
+        if snapshot.memPercentValue > 0.9 { score -= 8 } else if snapshot.memPercentValue > 0.8 { score -= 4 }
+        return max(0, min(100, score))
+    }
     /// 当前皮肤背景渐变（随外观模式切换深浅套）
     var themeGradient: [Color] { currentTheme.gradient(isDark: isDarkMode) }
     /// 当前皮肤卡片色
@@ -317,7 +350,7 @@ final class AppModel: ObservableObject {
     private let hub = SensorHub()
     private let alertEngine = AlertEngine()
     private let panelController = FloatingPanelController()
-    private var historyCapacity = 300
+    private var historyCapacity: Int { historyLimit }
     private var uiTick = 0
     /// 主窗口是否可见（图表仅在可见时同步，省后台开销）
     @Published var mainWindowVisible = false
@@ -368,7 +401,8 @@ final class AppModel: ObservableObject {
         pendingLanguage = appLanguage
         themeID = d.string(forKey: "themeID") ?? "aurora"
         appearanceID = d.string(forKey: "appearanceID") ?? "system"
-        proUnlocked = d.bool(forKey: "proUnlocked")
+        proTier = ProTier(rawValue: d.string(forKey: "proTier") ?? "") ?? .free
+        customAccentHex = d.string(forKey: "customAccentHex") ?? "FF9F43"
         dockBadgeEnabled = d.bool(forKey: "dockBadgeEnabled")
         // init 中首次赋值不触发 didSet，需手动同步激活模式
         NSApp.setActivationPolicy(dockBadgeEnabled ? .regular : .accessory)
@@ -439,6 +473,15 @@ final class AppModel: ObservableObject {
         guard hasStarted else { return }
         hub.start(interval: refreshInterval)
         hub.sampleNow()
+    }
+
+    /// 历史采样点上限（按版本）
+    var historyLimit: Int {
+        switch proTier {
+        case .free: return 300
+        case .deluxe: return 600
+        case .premium: return 1200
+        }
     }
 
     private func appendHistory(_ snap: SystemSnapshot) {
