@@ -11,6 +11,8 @@ final class RemoteMonitorServer {
 
     /// 快照数据源（由 AppModel 注入）
     var onSnapshot: (() -> SystemSnapshot?)?
+    /// 远程动作回调（lock/sleep，由 AppModel 注入）
+    var onAction: ((String) -> Void)?
 
     var isRunning: Bool { listener != nil }
     var port: UInt16 = 8900
@@ -58,9 +60,18 @@ final class RemoteMonitorServer {
 
     private func route(_ request: String) -> (String, String, String) {
         let firstLine = request.components(separatedBy: "\r\n").first ?? ""
-        let path = firstLine.components(separatedBy: " ").dropFirst().first ?? "/"
+        let parts = firstLine.components(separatedBy: " ")
+        let method = parts.first ?? "GET"
+        let path = parts.dropFirst().first ?? "/"
         if path.hasPrefix("/api/status") {
             return ("200 OK", "application/json; charset=utf-8", statusJSON())
+        }
+        if method == "POST", path.hasPrefix("/api/action") {
+            // body 形如 action=lock
+            let body = request.components(separatedBy: "\r\n\r\n").dropFirst().first ?? ""
+            let kv = body.components(separatedBy: "=")
+            if kv.count >= 2 { onAction?(kv[1]) }
+            return ("200 OK", "application/json; charset=utf-8", "{\"ok\":true}")
         }
         return ("200 OK", "text/html; charset=utf-8", Self.pageHTML)
     }
@@ -145,6 +156,10 @@ final class RemoteMonitorServer {
         <div class="card"><div class="label">磁盘已用</div><div class="value" id="disk">--<small>%</small></div></div>
       </div>
       <div class="procs"><h2>进程 TOP 5</h2><div id="procs"></div></div>
+      <div class="controls" style="margin-top:16px;display:flex;gap:10px">
+        <button onclick="act('lock')" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🔒 远程锁屏</button>
+        <button onclick="act('sleep')" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">💤 显示器休眠</button>
+      </div>
       <script>
         function fmt(n){ return (n==null||isNaN(n)) ? "--" : n.toFixed(0); }
         function tick(){
@@ -165,6 +180,10 @@ final class RemoteMonitorServer {
           }).catch(function(){ document.getElementById('time').textContent = '连接中断，正在重试…'; });
         }
         tick(); setInterval(tick, 2000);
+        function act(a){
+          fetch('/api/action',{method:'POST',body:'action='+a})
+            .then(function(){ document.getElementById('time').textContent = '已发送「'+(a==='lock'?'锁屏':'休眠')+'」指令'; });
+        }
       </script>
     </body>
     </html>
