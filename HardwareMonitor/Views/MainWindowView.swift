@@ -13,6 +13,7 @@ struct MainWindowView: View {
                 Text("监控").tag(0)
                 Text("剪贴板").tag(1)
                 Text("工具").tag(2)
+                Text("专业").tag(3)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -24,13 +25,18 @@ struct MainWindowView: View {
             } else if model.mainTab == 1 {
                 ClipboardView()
                     .environmentObject(model)
-            } else {
+            } else if model.mainTab == 2 {
                 ToolsView()
+                    .environmentObject(model)
+            } else {
+                ProView()
                     .environmentObject(model)
             }
         }
         .onAppear { model.setMainWindowVisible(true) }
         .onDisappear { model.setMainWindowVisible(false) }
+        .tint(model.accentColor)
+        .preferredColorScheme(model.preferredColorScheme)
         .frame(minWidth: 780, minHeight: 560)
         .background(Color(nsColor: .windowBackgroundColor))
     }
