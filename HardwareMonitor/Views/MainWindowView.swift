@@ -44,6 +44,7 @@ struct MainWindowView: View {
         .frame(minWidth: 780, minHeight: 560)
         .background(
             LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
+                .overlay(Color.black.opacity(0.25))
         )
     }
 
