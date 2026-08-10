@@ -8,13 +8,29 @@ struct ProView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                if model.proUnlocked {
+                if model.isDeluxe {
+                    HStack {
+                        Label("\(model.proTier.displayName) 已激活", systemImage: "checkmark.seal.fill")
+                            .font(.headline)
+                            .foregroundStyle(model.accentColor)
+                        Spacer()
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(model.themeCard))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
+
                     remoteSection
                     appearanceSection
                     reportSection
                     pressureSection
                     launchItemsSection
                     hotkeySection
+                    if model.isPremium {
+                        premiumInfoSection
+                    } else {
+                        upgradeToPremiumSection
+                    }
                     HStack {
                         Spacer()
                         Button("退出激活", role: .destructive) { model.deactivatePro() }
@@ -33,32 +49,31 @@ struct ProView: View {
     private var upgradeSection: some View {
         VStack(spacing: 14) {
             VStack(spacing: 8) {
-                Label("HardwareMonitor Pro", systemImage: "crown.fill")
+                Label("HardwareMonitor", systemImage: "crown.fill")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(model.accentColor)
-                Text("买断价 \(model.proPriceText)，一次购买永久使用")
+                Text("三档版本 · 激活码解锁 · 一次购买永久使用")
                     .font(.headline)
             }
             .frame(maxWidth: .infinity)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Pro 包含：")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                featureRow("局域网远程监控", "手机浏览器实时查看本机状态")
-                featureRow("6 套主题皮肤", "深/浅色双配色，跟随外观自动切换")
-                featureRow("Dock 温度角标", "Dock 图标直接显示 CPU 温度")
-                featureRow("性能报告导出", "历史数据导出 CSV")
-                featureRow("CPU 压力测试", "满载压测散热与稳定性")
-                featureRow("启动项管理", "查看登录启动项")
-                featureRow("全局快捷键", "⌃⌘⌥ 组合快速操作")
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(model.themeCard)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
+            // Standard（免费）
+            tierCard(
+                name: "Standard", price: "免费", accent: .secondary,
+                features: ["实时监控（CPU/内存/磁盘/网络/电池）", "温度与趋势图", "阈值告警", "剪贴板历史", "全套效率工具"],
+                current: model.proTier == .free
+            )
+            // Deluxe
+            tierCard(
+                name: "Deluxe", price: ProTier.deluxe.priceText, accent: model.accentColor,
+                features: ["Standard 全部功能", "局域网远程监控", "6 套主题皮肤", "Dock 温度角标", "性能报告导出 CSV", "CPU 压力测试", "启动项管理", "全局快捷键", "风扇转速显示"],
+                current: model.proTier == .deluxe
+            )
+            // Premium Deluxe
+            tierCard(
+                name: "Premium Deluxe", price: ProTier.premium.priceText, accent: Color.orange,
+                features: ["Deluxe 全部功能", "传感器矩阵（全部温度/风扇）", "性能健康评分", "进程资源 TOP10", "自定义强调色皮肤", "历史数据 1200 点（Deluxe 600 / 免费 300）"],
+                current: model.proTier == .premium
             )
 
             VStack(spacing: 10) {
@@ -96,7 +111,7 @@ struct ProView: View {
                     }
                     .frame(width: 180, height: 180)
                 }
-                Text("微信扫一扫 → 转账 \(model.proPriceText) → 回来粘贴激活码立即解锁")
+                Text("微信扫一扫 → 转账对应档位金额 → 回来粘贴激活码立即解锁")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -140,6 +155,79 @@ struct ProView: View {
                 .fill(model.themeCard)
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(model.themeBorder, lineWidth: 1))
         )
+    }
+
+    /// 版本对比卡片
+    private func tierCard(name: String, price: String, accent: Color, features: [String], current: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(name).font(.headline)
+                Text(price)
+                    .font(.callout.weight(.bold))
+                    .foregroundStyle(accent)
+                Spacer()
+                if current {
+                    Text("当前版本")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(accent.opacity(0.18)))
+                }
+            }
+            ForEach(0..<features.count, id: \.self) { i in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(accent)
+                    Text(features[i]).font(.caption)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(model.themeCard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(current ? accent : model.themeBorder, lineWidth: current ? 2 : 1)
+                )
+        )
+    }
+
+    /// Premium 已激活信息
+    private var premiumInfoSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Premium Deluxe 专属功能已全部解锁", systemImage: "sparkles")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.orange)
+            Text("前往「高级」标签页体验：传感器矩阵、性能健康评分、进程资源、自定义皮肤")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(model.themeCard))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.themeBorder, lineWidth: 1))
+    }
+
+    /// Deluxe 升级 Premium 引导
+    private var upgradeToPremiumSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("升级 Premium Deluxe（\(ProTier.premium.priceText)）", systemImage: "arrow.up.circle.fill")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.orange)
+            Text("解锁「高级」标签页：传感器矩阵 / 风扇转速 / 性能健康评分 / 进程资源 TOP10 / 自定义皮肤。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text("获取 Premium 激活码：微信扫码支付 ¥68 后联系开发者领取。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(model.themeCard))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.5), lineWidth: 1))
     }
 
     private func featureRow(_ name: String, _ desc: String) -> some View {
