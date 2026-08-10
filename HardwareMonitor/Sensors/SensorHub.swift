@@ -90,21 +90,28 @@ final class SensorHub {
 
         // 温度与风扇（低频：每 3 次采样一次，约 3s；温度变化慢，省 IPC 开销）
         if tick % 3 == 1 {
+            // SMC 与 HID 同时采样，CPU 温度取两者更高值（对齐第三方工具读数）
+            var hidTemps: [(key: String, value: Double)] = []
+            var smcTemps: [(key: String, value: Double)] = []
+            var candidates: [Double] = []
+            var gpuCandidates: [Double] = []
             if smc.isAvailable {
                 let r = smc.sample()
-                cachedTemps = r.temps
+                smcTemps = r.temps
                 cachedFans = r.fans
-                cachedCpuTemp = r.cpuTemp
-                cachedGpuTemp = r.gpuTemp
-                cachedSource = "SMC"
-            } else if hid.isAvailable {
-                let h = hid.sample()
-                cachedTemps = h.temps
-                cachedFans = []
-                cachedCpuTemp = h.cpuTemp
-                cachedGpuTemp = h.gpuTemp
-                cachedSource = h.temps.isEmpty ? nil : "HID"
+                if let t = r.cpuTemp { candidates.append(t) }
+                if let t = r.gpuTemp { gpuCandidates.append(t) }
             }
+            if hid.isAvailable {
+                let h = hid.sample()
+                hidTemps = h.temps
+                if let t = h.cpuTemp { candidates.append(t) }
+                if let t = h.gpuTemp { gpuCandidates.append(t) }
+            }
+            cachedTemps = smc.isAvailable ? smcTemps : hidTemps
+            cachedCpuTemp = candidates.max()
+            cachedGpuTemp = gpuCandidates.max()
+            cachedSource = smc.isAvailable ? "SMC" : (hidTemps.isEmpty ? nil : "HID")
         }
         snap.smcAvailable = smc.isAvailable
         snap.smcTemperatures = smc.isAvailable ? cachedTemps : []
