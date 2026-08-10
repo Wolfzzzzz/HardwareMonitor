@@ -165,7 +165,8 @@ struct DashboardView: View {
     }
     private var tempSub: String {
         if let t = model.snapshot.cpuTempC {
-            return "GPU " + Fmt.temp(model.snapshot.gpuTempC) + " · \(model.snapshot.hidTemperatures.count) 个传感器"
+            let gpu = model.snapshot.gpuTempC.map(Fmt.temp) ?? "该机型不提供"
+            return "GPU \(gpu) · \(model.snapshot.hidTemperatures.count) 个传感器"
         }
         if let t = model.snapshot.batteryTempC { return LZ.t("电池 ", "Battery ") + Fmt.temp(t) }
         return "系统未开放温度接口"
