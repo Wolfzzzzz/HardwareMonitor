@@ -31,6 +31,12 @@ struct SettingsView: View {
             Section {
                 Toggle("启用告警", isOn: $model.alertsEnabled)
                 Toggle("告警提示音", isOn: $model.alertSound)
+                Button("检查通知权限") { model.checkNotificationPermission() }
+                if let msg = model.notificationStatusMessage {
+                    Text(msg)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("告警开关")
             }
