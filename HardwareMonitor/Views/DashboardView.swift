@@ -66,9 +66,7 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(width: 400, height: 600)
-        .background(
-            LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
-        )
+        .background(Color.clear)
     }
 
     /// 当前温度来源列表（HID 优先，SMC 备用）
@@ -292,13 +290,6 @@ struct StatCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(model.themeCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(model.themeBorder, lineWidth: 1)
-                )
-        )
+        .glassBackground(cornerRadius: 12)
     }
 }
