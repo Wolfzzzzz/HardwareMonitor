@@ -57,8 +57,8 @@ final class HIDSensorReader {
             let svc = item as CFTypeRef
             let name = propertyString(svc, "Product") ?? "?"
             let usage = UInt32(propertyInt(svc, "PrimaryUsage") ?? 0)
-            // 温度类服务：usage 5（温度）且名字包含温度相关关键词
-            if usage == 5, isTemperatureName(name) {
+            // 温度类服务：usage 5（温度）全部加入（不过滤名字，GPU/校准等温度服务不丢）
+            if usage == 5 {
                 services.append((ref: svc, name: name, usage: usage))
             }
         }
@@ -117,6 +117,14 @@ final class HIDSensorReader {
             temps.append((svc.name, v))
         }
         temps.sort { $0.0 < $1.0 }
-        return (temps, temps.map { $0.1 }.max(), nil)
+        // GPU 温度：找名字含 gpu/tg0/gfx 的传感器（M 系列 PMU 常见命名）
+        var gpuMax: Double?
+        for (name, v) in temps {
+            let n = name.lowercased()
+            if n.hasPrefix("tg0") || n.contains("gpu") || n.contains("gfx") {
+                gpuMax = max(gpuMax ?? -1000, v)
+            }
+        }
+        return (temps, temps.map { $0.1 }.max(), gpuMax)
     }
 }
