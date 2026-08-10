@@ -45,6 +45,21 @@ final class AppModel: ObservableObject {
     @Published var pendingLanguage: String = "system"
     @Published var showLanguageConfirm = false
 
+    // MARK: - 专业功能（Pro）
+
+    /// 主题强调色：system/blue/purple/green/orange/red
+    @Published var themeID: String = "system" { didSet { UserDefaults.standard.set(themeID, forKey: "themeID") } }
+    /// 外观强制：system/dark/light
+    @Published var appearanceID: String = "system" { didSet { UserDefaults.standard.set(appearanceID, forKey: "appearanceID") } }
+    /// Dock 图标角标显示 CPU 温度
+    @Published var dockBadgeEnabled: Bool = false { didSet { UserDefaults.standard.set(dockBadgeEnabled, forKey: "dockBadgeEnabled"); updateDockBadge() } }
+
+    /// 远程监控
+    @Published var remoteEnabled: Bool = false { didSet { UserDefaults.standard.set(remoteEnabled, forKey: "remoteEnabled") } }
+    @Published var remotePort: Int = 8900 { didSet { UserDefaults.standard.set(remotePort, forKey: "remotePort") } }
+    @Published var remoteRunning = false
+    private let remoteServer = RemoteMonitorServer()
+
     /// 语言选择变更（Picker onChange 触发）→ 弹确认框
     func requestLanguageConfirm() {
         showLanguageConfirm = true
@@ -61,6 +76,152 @@ final class AppModel: ObservableObject {
     func cancelPendingLanguage() {
         showLanguageConfirm = false
         pendingLanguage = appLanguage
+    }
+
+    // MARK: - 主题
+
+    /// 当前强调色（主题）
+    var accentColor: Color {
+        switch themeID {
+        case "purple": return Color(red: 0.74, green: 0.55, blue: 1.0)
+        case "green": return Color(red: 0.25, green: 0.78, blue: 0.45)
+        case "orange": return Color(red: 1.0, green: 0.62, blue: 0.28)
+        case "red": return Color(red: 1.0, green: 0.42, blue: 0.42)
+        case "blue": return Color(red: 0.35, green: 0.62, blue: 1.0)
+        default: return .accentColor
+        }
+    }
+
+    /// 外观强制
+    var preferredColorScheme: ColorScheme? {
+        appearanceID == "dark" ? .dark : (appearanceID == "light" ? .light : nil)
+    }
+
+    // MARK: - Dock 温度角标
+
+    func updateDockBadge() {
+        if dockBadgeEnabled, let t = snapshot.cpuTempC {
+            NSApp.dockTile.badgeLabel = "\(Int(t.rounded()))°"
+        } else {
+            NSApp.dockTile.badgeLabel = nil
+        }
+    }
+
+    // MARK: - 远程监控
+
+    var localIP: String? {
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return nil }
+        defer { freeifaddrs(ifaddr) }
+        for ptr in sequence(first: first, next: { $0.pointee.ifa_next }) {
+            let addr = ptr.pointee.ifa_addr
+            guard let addr,
+                  addr.pointee.sa_family == UInt8(AF_INET),
+                  let name = String(cString: ptr.pointee.ifa_name, encoding: .utf8),
+                  name.hasPrefix("en") || name.hasPrefix("utun") else { continue }
+            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            getnameinfo(addr, socklen_t(addr.pointee.sa_len), &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST)
+            let ip = String(cString: host)
+            if !ip.hasPrefix("127."), ip != "0.0.0.0" { return ip }
+        }
+        return nil
+    }
+
+    var remoteURLString: String? {
+        localIP.map { "http://\($0):\(remotePort)" }
+    }
+
+    func toggleRemote() {
+        remoteRunning ? stopRemote() : startRemote()
+    }
+
+    func startRemote() {
+        remoteServer.port = UInt16(max(1024, min(65535, remotePort)))
+        remoteServer.onSnapshot = { [weak self] in self?.snapshot }
+        do {
+            try remoteServer.start()
+            remoteRunning = true
+            remoteEnabled = true
+        } catch {
+            remoteRunning = false
+        }
+    }
+
+    func stopRemote() {
+        remoteServer.stop()
+        remoteRunning = false
+    }
+
+    // MARK: - 压力测试
+
+    private let pressureEngine = PressureTestEngine()
+    @Published var pressureRunning = false
+    @Published var pressureThreads: Double = 4 { didSet { UserDefaults.standard.set(pressureThreads, forKey: "pressureThreads") } }
+
+    func togglePressure() {
+        pressureEngine.isRunning ? stopPressure() : startPressure()
+    }
+
+    func startPressure() {
+        let cores = ProcessInfo.processInfo.activeProcessorCount
+        let count = max(1, min(Int(pressureThreads), cores * 2))
+        pressureEngine.start(count: count)
+        pressureRunning = true
+    }
+
+    func stopPressure() {
+        pressureEngine.stop()
+        pressureRunning = false
+    }
+
+    // MARK: - CSV 报告导出
+
+    func exportHistoryCSV() {
+        guard !history.isEmpty else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        let df = DateFormatter()
+        df.dateFormat = "yyyyMMdd-HHmmss"
+        panel.nameFieldStringValue = "HardwareMonitor-\(df.string(from: Date())).csv"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        var csv = "time,cpuPercent,memPercent,cpuTempC,gpuTempC,netDownMBs,netUpMBs\n"
+        let tf = DateFormatter()
+        tf.dateFormat = "HH:mm:ss"
+        for p in history {
+            let cpuT = p.cpuTemp.map { String(format: "%.1f", $0) } ?? ""
+            let gpuT = p.gpuTemp.map { String(format: "%.1f", $0) } ?? ""
+            csv += "\(tf.string(from: p.time)),\(Int(p.cpuPercent)),\(Int(p.memPercent * 100)),\(cpuT),\(gpuT),\(String(format: "%.2f", p.netDownMBs)),\(String(format: "%.2f", p.netUpMBs))\n"
+        }
+        try? csv.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    // MARK: - 全局快捷键
+
+    @Published var hotkeysEnabled: Bool = false {
+        didSet {
+            UserDefaults.standard.set(hotkeysEnabled, forKey: "hotkeysEnabled")
+            updateHotkeys()
+        }
+    }
+    private let hotkeyManager = HotkeyManager()
+
+    func updateHotkeys() {
+        if hotkeysEnabled {
+            hotkeyManager.start { [weak self] action in
+                Task { @MainActor in self?.handleHotkey(action) }
+            }
+        } else {
+            hotkeyManager.stop()
+        }
+    }
+
+    private func handleHotkey(_ action: HotkeyAction) {
+        switch action {
+        case .togglePanel: togglePanel()
+        case .lockScreen: lockScreen()
+        case .sleepDisplay: sleepDisplay()
+        case .clearClipboard: clearClipboardHistory()
+        }
     }
 
     // MARK: - 数据状态
@@ -143,6 +304,13 @@ final class AppModel: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         appLanguage = d.string(forKey: "appLanguage") ?? "system"
         pendingLanguage = appLanguage
+        themeID = d.string(forKey: "themeID") ?? "system"
+        appearanceID = d.string(forKey: "appearanceID") ?? "system"
+        dockBadgeEnabled = d.bool(forKey: "dockBadgeEnabled")
+        remoteEnabled = d.bool(forKey: "remoteEnabled")
+        remotePort = d.object(forKey: "remotePort") == nil ? 8900 : d.integer(forKey: "remotePort")
+        pressureThreads = d.object(forKey: "pressureThreads") == nil ? 4 : d.double(forKey: "pressureThreads")
+        hotkeysEnabled = d.bool(forKey: "hotkeysEnabled")
     }
 
     // MARK: - 界面语言切换
@@ -187,6 +355,7 @@ final class AppModel: ObservableObject {
             }
             self.alertEngine.check(snap, model: self)
             self.refreshAlertActive(snap)
+            self.updateDockBadge()
         }
         hub.start(interval: refreshInterval)
         hub.sampleNow()
