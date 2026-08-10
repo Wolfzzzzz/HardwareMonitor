@@ -74,18 +74,38 @@ struct ProView: View {
     private var appearanceSection: some View {
         SectionCard(title: "外观与主题", icon: "paintpalette") {
             HStack {
-                Text("强调色")
+                Text("主题皮肤")
                 Spacer()
                 Picker("", selection: $model.themeID) {
-                    Text("系统蓝").tag("system")
-                    Text("蓝色").tag("blue")
-                    Text("紫色").tag("purple")
-                    Text("绿色").tag("green")
-                    Text("橙色").tag("orange")
-                    Text("红色").tag("red")
+                    ForEach(0..<AppThemes.all.count, id: \.self) { idx in
+                        let t = AppThemes.all[idx]
+                        Label {
+                            Text(t.name)
+                        } icon: {
+                            Circle().fill(t.accent).frame(width: 10, height: 10)
+                        }
+                        .tag(t.id)
+                    }
                 }
                 .labelsHidden()
-                .frame(width: 130)
+                .frame(width: 140)
+            }
+            HStack(spacing: 6) {
+                ForEach(0..<AppThemes.all.count, id: \.self) { idx in
+                    let t = AppThemes.all[idx]
+                    Circle()
+                        .fill(t.accent)
+                        .frame(width: 14, height: 14)
+                        .overlay(
+                            Circle().stroke(Color.white.opacity(model.themeID == t.id ? 0.9 : 0.25), lineWidth: 2)
+                        )
+                        .scaleEffect(model.themeID == t.id ? 1.15 : 1.0)
+                        .onTapGesture { model.themeID = t.id }
+                }
+                Spacer()
+                Text("点击色点快速切换")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             HStack {
                 Text("外观模式")
