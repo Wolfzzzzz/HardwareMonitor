@@ -66,6 +66,9 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(width: 400, height: 600)
+        .background(
+            LinearGradient(colors: model.currentTheme.gradient, startPoint: .top, endPoint: .bottom)
+        )
     }
 
     /// 当前温度来源列表（HID 优先，SMC 备用）
@@ -251,6 +254,7 @@ struct DashboardView: View {
 
 /// 通用统计卡片
 struct StatCard: View {
+    @EnvironmentObject private var model: AppModel
     let title: String
     let icon: String
     let color: Color
@@ -289,7 +293,11 @@ struct StatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.primary.opacity(0.05))
+                .fill(model.currentTheme.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(model.currentTheme.cardBorder, lineWidth: 1)
+                )
         )
     }
 }
