@@ -826,7 +826,13 @@ final class AppModel: ObservableObject {
             }
             return
         }
-        let path = "/tmp/hwmon-screenshot-\(Int(Date().timeIntervalSince1970)).png"
+        // 保存到「图片/HardwareMonitor」目录（用户找得到的位置）
+        let fm = FileManager.default
+        let dir = NSHomeDirectory() + "/Pictures/HardwareMonitor"
+        try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let path = dir + "/截图-" + formatter.string(from: Date()) + ".png"
         // 同步执行并捕获 stderr（无 stdout 关注）
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
@@ -846,10 +852,22 @@ final class AppModel: ObservableObject {
         }
         let errStr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
         let exitCode = p.terminationStatus
-        let fm = FileManager.default
         let size = (try? fm.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
         if exitCode == 0, size > 0 {
-            NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            // 成功：弹窗显示位置，可打开所在文件夹（Finder 选中文件）或直接看图片
+            let alert = NSAlert()
+            alert.messageText = "✅ 截图成功"
+            alert.informativeText = "已保存到：\n\(path)"
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "打开所在文件夹")
+            alert.addButton(withTitle: "打开图片")
+            alert.addButton(withTitle: "好")
+            let resp = alert.runModal()
+            if resp == .alertFirstButtonReturn {
+                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+            } else if resp == .alertSecondButtonReturn {
+                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            }
             return
         }
         // 失败诊断：CGPreflight 已 true 但截图仍失败 → 99% 是「权限刚开，App 未重启」
