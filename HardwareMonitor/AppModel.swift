@@ -62,7 +62,7 @@ final class AppModel: ObservableObject {
 
     @Published var bigFiles: [DiskScanner.BigFile] = []
     @Published var scanningDisk = false
-    @Published var benchmarkScore: Int?
+    @Published var benchmarkResult: Benchmark.Result?
     @Published var benchmarkRunning = false
     private let diskScanner = DiskScanner()
 
@@ -79,14 +79,15 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// CPU 跑分（后台）
+    /// CPU 跑分（后台，单核+多核多负载）
     func runBenchmark() {
         guard !benchmarkRunning else { return }
         benchmarkRunning = true
         Task {
-            let score = await Task.detached(priority: .userInitiated) { AppModel.computeBenchmark() }.value
+            let cores = ProcessInfo.processInfo.activeProcessorCount
+            let result = await Task.detached(priority: .userInitiated) { Benchmark.run(cores: cores) }.value
             await MainActor.run {
-                benchmarkScore = score
+                benchmarkResult = result
                 benchmarkRunning = false
             }
         }
@@ -217,36 +218,6 @@ final class AppModel: ObservableObject {
     var systemVersion: String {
         let v = ProcessInfo.processInfo.operatingSystemVersion
         return "macOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
-    }
-
-    /// CPU 性能跑分计算（多线程，时间箱法：每线程真实跑满 0.6 秒，统计迭代吞吐，越大越快）
-    nonisolated private static func computeBenchmark() -> Int {
-        let cores = ProcessInfo.processInfo.activeProcessorCount
-        let runNanoseconds: UInt64 = 600_000_000   // 每线程跑 0.6 秒（对优化级别不敏感）
-        var total: UInt64 = 0
-        let group = DispatchGroup()
-        let lock = NSLock()
-        for _ in 0..<cores {
-            group.enter()
-            DispatchQueue.global(qos: .userInitiated).async {
-                let start = DispatchTime.now().uptimeNanoseconds
-                var x: UInt64 = 0
-                var i: UInt64 = 0
-                while true {
-                    for _ in 0..<1024 {           // 每 1024 次才查一次时钟，避免时钟开销主导
-                        x = x &* 6364136223846793005 &+ 12345
-                        i &+= x & 1                // 计数依赖 x，防止优化器删除计算
-                    }
-                    if DispatchTime.now().uptimeNanoseconds - start >= runNanoseconds { break }
-                }
-                lock.lock(); total &+= i; lock.unlock()
-                group.leave()
-            }
-        }
-        _ = group.wait(timeout: .now() + 10)
-        // 吞吐 = 总迭代数 / 0.6 秒；350K 次/秒 = 1 分（量级校准到 Geekbench 6 多核参考表）
-        let throughput = Double(total) / 0.6
-        return Int(min(30000, max(100, throughput / 350_000)))
     }
 
     /// 识别出的芯片（参考对比）
