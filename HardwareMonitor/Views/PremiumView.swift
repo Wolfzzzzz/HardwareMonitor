@@ -283,26 +283,57 @@ struct PremiumView: View {
 
     private var benchmarkSection: some View {
         AdvancedCard(title: "CPU 性能跑分", icon: "gauge.with.dots.needle.67percent") {
-            HStack(alignment: .center) {
-                if let score = model.benchmarkScore {
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            Text("\(score)")
-                                .font(.system(size: 34, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(model.accentColor)
-                            Text("分")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+            if let r = model.benchmarkResult {
+                // 单核 / 多核 双分数
+                HStack(spacing: 16) {
+                    scoreBox(title: "单核", score: r.singleScore, color: model.accentColor)
+                    scoreBox(title: "多核", score: r.multiScore, color: .orange)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
                         Text(chipNameText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                        Button("重测") { model.runBenchmark() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            .disabled(model.benchmarkRunning)
                     }
-                } else {
+                }
+                // 4 类负载明细
+                Divider().padding(.vertical, 6)
+                ForEach(0..<r.workloads.count, id: \.self) { i in
+                    HStack(spacing: 8) {
+                        Text(r.workloads[i].rawValue)
+                            .font(.caption)
+                            .frame(width: 74, alignment: .leading)
+                            .foregroundStyle(.secondary)
+                        Text("单 \(r.singleSub[i])")
+                            .font(.caption2.monospacedDigit())
+                            .frame(width: 56, alignment: .trailing)
+                            .foregroundStyle(model.accentColor)
+                        Text("多 \(r.multiSub[i])")
+                            .font(.caption2.monospacedDigit())
+                            .frame(width: 56, alignment: .trailing)
+                            .foregroundStyle(.orange)
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.primary.opacity(0.08))
+                                    .frame(width: geo.size.width, height: 6)
+                                Capsule().fill(.orange.opacity(0.85))
+                                    .frame(width: max(6, geo.size.width * CGFloat(r.multiSub[i]) / 6000), height: 6)
+                            }
+                        }
+                        .frame(height: 6)
+                    }
+                    .padding(.vertical, 2)
+                }
+                // 多核对比图
+                chipCompareView(score: r.multiScore)
+            } else {
+                HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(model.benchmarkRunning ? "跑分中…（约 1 秒）" : "测试 CPU 多线程性能")
+                        Text(model.benchmarkRunning ? "跑分中…（约 3 秒，4 类负载 × 单核/多核）" : "测试单核 + 多核性能（整数/浮点/内存/位运算 4 类负载）")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Text(chipNameText)
@@ -310,18 +341,25 @@ struct PremiumView: View {
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
                     }
+                    Spacer()
+                    Button(model.benchmarkRunning ? "跑分中…" : "开始跑分") { model.runBenchmark() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(model.benchmarkRunning)
                 }
-                Spacer()
-                Button(model.benchmarkRunning ? "跑分中…" : (model.benchmarkScore == nil ? "开始跑分" : "重测")) {
-                    model.runBenchmark()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(model.benchmarkRunning)
             }
+        }
+    }
 
-            if let score = model.benchmarkScore {
-                chipCompareView(score: score)
-            }
+    /// 分数展示块
+    private func scoreBox(title: String, score: Int, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("\(score)")
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(color)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 
