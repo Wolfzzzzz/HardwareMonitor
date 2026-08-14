@@ -283,19 +283,33 @@ struct PremiumView: View {
 
     private var benchmarkSection: some View {
         AdvancedCard(title: "CPU 性能跑分", icon: "gauge.with.dots.needle.67percent") {
-            HStack {
+            HStack(alignment: .center) {
                 if let score = model.benchmarkScore {
-                    Text("\(score)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(model.accentColor)
-                    Text("多核得分（越大越快）")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text("\(score)")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(model.accentColor)
+                            Text("分")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(chipNameText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 } else {
-                    Text(model.benchmarkRunning ? "跑分中…（约 10 秒）" : "测试 CPU 多线程性能")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.benchmarkRunning ? "跑分中…（约 1 秒）" : "测试 CPU 多线程性能")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(chipNameText)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
                 Button(model.benchmarkRunning ? "跑分中…" : (model.benchmarkScore == nil ? "开始跑分" : "重测")) {
@@ -304,7 +318,83 @@ struct PremiumView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(model.benchmarkRunning)
             }
+
+            if let score = model.benchmarkScore {
+                chipCompareView(score: score)
+            }
         }
+    }
+
+    /// 芯片名（识别结果 + 档位）
+    private var chipNameText: String {
+        if let c = model.detectedChip {
+            return "\(c.name) · \(c.tier)"
+        }
+        let brand = model.cpuBrand
+        return brand.isEmpty ? "Apple Silicon" : brand
+    }
+
+    /// 芯片对比条形图：本机 vs 参考芯片（Geekbench 6 多核量级）
+    private func chipCompareView(score: Int) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Divider().padding(.vertical, 4)
+            let all = model.chipComparison
+            let maxScore = max(Double(score), Double(all.map { $0.score }.max() ?? 1))
+            // 本机行
+            HStack(spacing: 8) {
+                Text("本机")
+                    .font(.caption2.weight(.bold))
+                    .frame(width: 86, alignment: .leading)
+                    .foregroundStyle(model.accentColor)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.primary.opacity(0.08))
+                            .frame(width: geo.size.width, height: 8)
+                        Capsule().fill(model.accentColor)
+                            .frame(width: max(8, geo.size.width * CGFloat(score) / CGFloat(maxScore)), height: 8)
+                    }
+                }
+                .frame(height: 8)
+                Text("\(score)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(model.accentColor)
+                    .frame(width: 48, alignment: .trailing)
+            }
+            // 参考芯片（分数最接近本机的 4 款）
+            ForEach(Array(nearestChips(score).enumerated()), id: \.element.id) { _, chip in
+                HStack(spacing: 8) {
+                    Text(chip.name)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 86, alignment: .leading)
+                        .lineLimit(1)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.primary.opacity(0.08))
+                                .frame(width: geo.size.width, height: 8)
+                            Capsule().fill(Color.white.opacity(0.35))
+                                .frame(width: max(8, geo.size.width * CGFloat(chip.score) / CGFloat(maxScore)), height: 8)
+                        }
+                    }
+                    .frame(height: 8)
+                    Text("\(chip.score)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 48, alignment: .trailing)
+                }
+            }
+            Text("参考 Geekbench 6 多核 · 本机为实测吞吐换算")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+        }
+        .padding(.top, 2)
+    }
+
+    /// 取参考分数最接近本机分数的 4 款芯片（按分数升序）
+    private func nearestChips(_ score: Int) -> [ChipDB.Chip] {
+        let sorted = model.chipComparison.sorted { abs($0.score - score) < abs($1.score - score) }
+        return Array(sorted.prefix(4)).sorted { $0.score < $1.score }
     }
 
     // MARK: 告警历史
