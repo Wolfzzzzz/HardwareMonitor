@@ -64,6 +64,13 @@ final class AppModel: ObservableObject {
     @Published var scanningDisk = false
     @Published var benchmarkResult: Benchmark.Result?
     @Published var benchmarkRunning = false
+    @Published var benchmarkStage: Benchmark.Stage = .idle
+    @Published var currentWorkload: Benchmark.Workload? = nil
+    @Published var showBenchmarkSheet = false
+    /// 各负载吞吐→分数换算除数（与 Benchmark.swift 保持一致）
+    private let workloadDivisors: [Benchmark.Workload: Double] = [
+        .integer: 142_000, .float: 200_000, .memory: 634_000, .bitwise: 108_000,
+    ]
     private let diskScanner = DiskScanner()
 
     /// 扫描磁盘大文件（后台）
@@ -79,18 +86,52 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// CPU 跑分（后台，单核+多核多负载）
+    /// CPU 跑分（独立 sheet：单核 4 步 + 多核 4 步，依次更新 currentWorkload 驱动进度）
     func runBenchmark() {
         guard !benchmarkRunning else { return }
         benchmarkRunning = true
-        Task {
-            let cores = ProcessInfo.processInfo.activeProcessorCount
-            let result = await Task.detached(priority: .userInitiated) { Benchmark.run(cores: cores) }.value
-            await MainActor.run {
-                benchmarkResult = result
-                benchmarkRunning = false
+        benchmarkResult = nil
+        let ws = Benchmark.Workload.allCases
+        let cores = ProcessInfo.processInfo.activeProcessorCount
+        Task { @MainActor in
+            var singleSubs: [Int] = []
+            var multiSubs: [Int] = []
+            // 单核阶段
+            benchmarkStage = .single
+            for w in ws {
+                currentWorkload = w
+                let iters = await Task.detached(priority: .userInitiated) {
+                    Benchmark.runSingleWorkload(workload: w, threads: 1)
+                }.value
+                singleSubs.append(workloadScore(w, totalIters: iters))
             }
+            // 多核阶段
+            benchmarkStage = .multi
+            for w in ws {
+                currentWorkload = w
+                let iters = await Task.detached(priority: .userInitiated) {
+                    Benchmark.runSingleWorkload(workload: w, threads: cores)
+                }.value
+                multiSubs.append(workloadScore(w, totalIters: iters))
+            }
+            // 完成
+            let singleScore = singleSubs.reduce(0, +) / max(1, singleSubs.count)
+            let multiScore = multiSubs.reduce(0, +) / max(1, multiSubs.count)
+            benchmarkResult = Benchmark.Result(
+                singleScore: singleScore, multiScore: multiScore,
+                workloads: ws, singleSub: singleSubs, multiSub: multiSubs
+            )
+            benchmarkStage = .done
+            currentWorkload = nil
+            benchmarkRunning = false
         }
+    }
+
+    /// 跑分辅助：单次负载迭代数 → 分数
+    private func workloadScore(_ w: Benchmark.Workload, totalIters: Double) -> Int {
+        let tps = totalIters / 0.35
+        let div = workloadDivisors[w] ?? 100_000
+        return Int(min(10000, max(1, tps / div)))
     }
 
     /// 告警历史（Premium）
