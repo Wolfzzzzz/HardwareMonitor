@@ -67,10 +67,16 @@ final class AppModel: ObservableObject {
     @Published var benchmarkStage: Benchmark.Stage = .idle
     @Published var currentWorkload: Benchmark.Workload? = nil
     @Published var showBenchmarkSheet = false
-    /// 各负载吞吐→分数换算除数（与 Benchmark.swift 保持一致）
-    private let workloadDivisors: [Benchmark.Workload: Double] = [
+    /// 单核 divisor（校准到 Geekbench 6 单核量级）
+    private let singleDivisors: [Benchmark.Workload: Double] = [
         .integer: 142_000, .float: 200_000, .memory: 634_000, .bitwise: 108_000,
     ]
+    /// 多核 divisor（单核 ×2：避免多核子负载分数触顶 cap，并贴合 Geekbench 6 多核量级）
+    private let multiDivisors: [Benchmark.Workload: Double] = [
+        .integer: 284_000, .float: 400_000, .memory: 1_268_000, .bitwise: 216_000,
+    ]
+    private let singleCap: Double = 10_000
+    private let multiCap: Double = 25_000
     private let diskScanner = DiskScanner()
 
     /// 扫描磁盘大文件（后台）
@@ -103,7 +109,7 @@ final class AppModel: ObservableObject {
                 let iters = await Task.detached(priority: .userInitiated) {
                     Benchmark.runSingleWorkload(workload: w, threads: 1)
                 }.value
-                singleSubs.append(workloadScore(w, totalIters: iters))
+                singleSubs.append(workloadScore(w, totalIters: iters, isMulti: false))
             }
             // 多核阶段
             benchmarkStage = .multi
@@ -112,14 +118,11 @@ final class AppModel: ObservableObject {
                 let iters = await Task.detached(priority: .userInitiated) {
                     Benchmark.runSingleWorkload(workload: w, threads: cores)
                 }.value
-                multiSubs.append(workloadScore(w, totalIters: iters))
+                multiSubs.append(workloadScore(w, totalIters: iters, isMulti: true))
             }
-            // 完成
+            // 完成（多核 divisor 已校准到 Geekbench 6 多核量级，无需再乘效率系数）
             let singleScore = singleSubs.reduce(0, +) / max(1, singleSubs.count)
-            // 多核并行效率折算：纯计算负载近线性扩展，Geekbench 真实负载效率 ~0.6
-            // 使本机多核分贴近该芯片的 Geekbench 6 参考分
-            let multiRaw = Double(multiSubs.reduce(0, +)) / Double(max(1, multiSubs.count))
-            let multiScore = Int(min(30000, multiRaw * 0.61))
+            let multiScore = multiSubs.reduce(0, +) / max(1, multiSubs.count)
             benchmarkResult = Benchmark.Result(
                 singleScore: singleScore, multiScore: multiScore,
                 workloads: ws, singleSub: singleSubs, multiSub: multiSubs
@@ -130,11 +133,12 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// 跑分辅助：单次负载迭代数 → 分数
-    private func workloadScore(_ w: Benchmark.Workload, totalIters: Double) -> Int {
+    /// 跑分辅助：单次负载迭代数 → 分数（单核/多核分别换算）
+    private func workloadScore(_ w: Benchmark.Workload, totalIters: Double, isMulti: Bool) -> Int {
         let tps = totalIters / 0.35
-        let div = workloadDivisors[w] ?? 100_000
-        return Int(min(10000, max(1, tps / div)))
+        let div = (isMulti ? multiDivisors : singleDivisors)[w] ?? 200_000
+        let cap = isMulti ? multiCap : singleCap
+        return Int(min(cap, max(1, tps / div)))
     }
 
     /// 告警历史（Premium）
