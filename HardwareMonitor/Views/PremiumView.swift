@@ -382,7 +382,7 @@ struct PremiumView: View {
             let maxScore = max(Double(score), Double(all.map { $0.score }.max() ?? 1))
             // 本机行
             HStack(spacing: 8) {
-                Text("本机")
+                Text("本机·实测")
                     .font(.caption2.weight(.bold))
                     .frame(width: 86, alignment: .leading)
                     .foregroundStyle(model.accentColor)
@@ -403,10 +403,10 @@ struct PremiumView: View {
             // 参考芯片（分数最接近本机的 4 款）
             ForEach(Array(nearestChips(score).enumerated()), id: \.element.id) { _, chip in
                 HStack(spacing: 8) {
-                    Text(chip.name)
+                    Text(chip.name + "·参考")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .frame(width: 86, alignment: .leading)
+                        .frame(width: 96, alignment: .leading)
                         .lineLimit(1)
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
@@ -423,7 +423,7 @@ struct PremiumView: View {
                         .frame(width: 48, alignment: .trailing)
                 }
             }
-            Text("参考 Geekbench 6 多核 · 本机为实测吞吐换算")
+            Text("参考分 = Geekbench 6 全球真实设备实测（中位数）\n本机 = 本次实时实测")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)
