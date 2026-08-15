@@ -342,9 +342,11 @@ struct PremiumView: View {
                             .lineLimit(1)
                     }
                     Spacer()
-                    Button(model.benchmarkRunning ? "跑分中…" : "开始跑分") { model.runBenchmark() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(model.benchmarkRunning)
+                    Button(model.benchmarkRunning ? "跑分中…" : "开始跑分") {
+                        model.showBenchmarkSheet = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.benchmarkRunning)
                 }
             }
         }
