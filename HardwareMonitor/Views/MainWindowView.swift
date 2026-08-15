@@ -46,6 +46,10 @@ struct MainWindowView: View {
             LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
                 .overlay(Color.black.opacity(0.25))
         )
+        .sheet(isPresented: $model.showBenchmarkSheet) {
+            BenchmarkView()
+                .environmentObject(model)
+        }
     }
 
     /// 监控页内容
