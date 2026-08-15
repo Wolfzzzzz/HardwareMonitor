@@ -26,6 +26,10 @@ enum ChipDB {
         Chip(id: "m4pro", name: "M4 Pro", score: 22000, tier: "高性能"),
         Chip(id: "m4max", name: "M4 Max", score: 29000, tier: "旗舰"),
         Chip(id: "m2ultra", name: "M2 Ultra", score: 27000, tier: "旗舰"),
+        Chip(id: "m5", name: "Apple M5", score: 15000, tier: "主流"),
+        Chip(id: "m5pro", name: "M5 Pro", score: 23000, tier: "高性能"),
+        Chip(id: "m5max", name: "M5 Max", score: 32000, tier: "旗舰"),
+        Chip(id: "m5ultra", name: "M5 Ultra", score: 42000, tier: "旗舰"),
     ]
 
     /// 从 CPU 品牌字符串自动识别芯片（长关键字优先）
@@ -35,6 +39,7 @@ enum ChipDB {
             ("m1 ultra", "m1ultra"), ("m1 pro", "m1pro"), ("m1 max", "m1max"), ("m1", "m1"),
             ("m2 ultra", "m2ultra"), ("m2 pro", "m2pro"), ("m2 max", "m2max"), ("m2", "m2"),
             ("m3 pro", "m3pro"), ("m3 max", "m3max"), ("m3", "m3"),
+            ("m5 ultra", "m5ultra"), ("m5 pro", "m5pro"), ("m5 max", "m5max"), ("m5", "m5"),
             ("m4 pro", "m4pro"), ("m4 max", "m4max"), ("m4", "m4"),
             ("i9-12900k", "i9-12900k"), ("i7-9750h", "i7-9750h"), ("i5", "i5-10"),
         ]
