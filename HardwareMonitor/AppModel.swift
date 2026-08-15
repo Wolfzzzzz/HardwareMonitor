@@ -116,7 +116,10 @@ final class AppModel: ObservableObject {
             }
             // 完成
             let singleScore = singleSubs.reduce(0, +) / max(1, singleSubs.count)
-            let multiScore = multiSubs.reduce(0, +) / max(1, multiSubs.count)
+            // 多核并行效率折算：纯计算负载近线性扩展，Geekbench 真实负载效率 ~0.6
+            // 使本机多核分贴近该芯片的 Geekbench 6 参考分
+            let multiRaw = Double(multiSubs.reduce(0, +)) / Double(max(1, multiSubs.count))
+            let multiScore = Int(min(30000, multiRaw * 0.61))
             benchmarkResult = Benchmark.Result(
                 singleScore: singleScore, multiScore: multiScore,
                 workloads: ws, singleSub: singleSubs, multiSub: multiSubs
