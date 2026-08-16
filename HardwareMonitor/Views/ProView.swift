@@ -20,6 +20,7 @@ struct ProView: View {
                     .glassBackground(cornerRadius: 12)
 
                     remoteSection
+                    wifiSection
                     appearanceSection
                     reportSection
                     pressureSection
@@ -242,6 +243,62 @@ struct ProView: View {
     }
 
     // MARK: 远程监控
+
+    // MARK: WiFi 详情
+
+    private var wifiSection: some View {
+        SectionCard(title: "WiFi 详情", icon: "wifi") {
+            VStack(spacing: 0) {
+                if model.wifiInfo == nil {
+                    HStack {
+                        Text("点「刷新」查看当前 WiFi 信息（SSID/信号/IP/网关/DNS）")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("刷新") { model.refreshWiFiInfo() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                    }
+                } else {
+                    wifiRow("网络", model.wifiInfo?.ssid ?? "未连接")
+                    wifiRow("信号", wifiSignalText)
+                    wifiRow("信道", model.wifiInfo?.channel.map { "\($0)" } ?? "--")
+                    wifiRow("链路速率", model.wifiInfo?.linkSpeedMbps.map { String(format: "%.0f Mbps", $0) } ?? "--")
+                    wifiRow("IP 地址", model.wifiInfo?.ip ?? "--")
+                    wifiRow("网关", model.wifiInfo?.gateway ?? "--")
+                    wifiRow("DNS", model.wifiInfo?.dns.isEmpty == false ? model.wifiInfo!.dns.joined(separator: "  ") : "--")
+                    Divider().padding(.vertical, 4)
+                    HStack {
+                        Text(model.wifiUpdatedAt.map { "更新于 \($0.formatted(date: .omitted, time: .standard))" } ?? "")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("刷新") { model.refreshWiFiInfo() }
+                            .controlSize(.small)
+                    }
+                }
+            }
+        }
+    }
+
+    private func wifiRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 60, alignment: .leading)
+            Text(value)
+                .font(.caption.monospaced())
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 3)
+    }
+
+    private var wifiSignalText: String {
+        guard let r = model.wifiInfo?.rssi else { return "--" }
+        let bars = r >= -50 ? "满格" : (r >= -65 ? "良好" : (r >= -75 ? "一般" : "弱"))
+        return "\(r) dBm（\(bars)）"
+    }
 
     private var remoteSection: some View {
         SectionCard(title: "局域网远程监控", icon: "wifi") {
