@@ -14,7 +14,9 @@ struct PremiumView: View {
                     processSection
                     systemInfoSection
                     batteryReportSection
+                    diskHealthSection
                     diskScanSection
+                    speedTestSection
                     benchmarkSection
                     alertHistorySection
                     customSkinSection
@@ -238,6 +240,136 @@ struct PremiumView: View {
         if c > 800 || h < 80 { return "💡 电池循环已较高，建议关注电池寿命，长期插电使用时可开启低电量模式。" }
         if c > 400 { return "💡 电池状态良好，建议避免经常用到 0% 再充电。" }
         return "💡 电池状态健康，保持 20%-80% 区间使用效果最佳。"
+    }
+
+    // MARK: 磁盘健康
+
+    private var diskHealthSection: some View {
+        AdvancedCard(title: "磁盘健康检测", icon: "internaldrive.fill") {
+            if let h = model.diskHealth {
+                HStack(spacing: 8) {
+                    Image(systemName: h.isFailing ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(h.isFailing ? .red : .green)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(h.isFailing ? "磁盘存在风险！" : "磁盘状态健康")
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(h.isFailing ? .red : .primary)
+                        Text("SMART：\(h.smartStatus)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(.bottom, 6)
+                infoRow("设备", h.device)
+                infoRow("型号", h.model)
+                infoRow("容量", h.capacity)
+                infoRow("介质", h.mediaType)
+                if let ph = h.powerOnHours {
+                    infoRow("通电时长", "\(ph) 小时（\(Int(ph / 24)) 天）")
+                }
+                if let rs = h.reallocatedSectors {
+                    infoRow("重映射扇区", "\(rs)" + (rs > 0 ? " ⚠️ 有坏道迹象" : ""))
+                }
+                if let t = h.rawTemp {
+                    infoRow("硬盘温度", "\(t)°C")
+                }
+                HStack {
+                    Text(model.diskHealthCheckedAt.map { "检测于 \($0.formatted(date: .omitted, time: .standard))" } ?? "")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("重新检测") { model.checkDiskHealth() }
+                        .controlSize(.small)
+                }
+                .padding(.top, 4)
+            } else {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("检测主硬盘 S.M.A.R.T 健康状态（寿命/坏道/通电时长）")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("已安装 smartctl 时显示更详细数据（brew install smartmontools）")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    Button("开始检测") { model.checkDiskHealth() }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    // MARK: 网络测速
+
+    private var speedTestSection: some View {
+        AdvancedCard(title: "网络测速", icon: "speedometer") {
+            if model.speedTesting {
+                VStack(spacing: 8) {
+                    HStack {
+                        Text(model.speedStageText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(model.accentColor)
+                        Spacer()
+                        Text("\(Int(model.speedProgress * 100))%")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    ProgressView(value: model.speedProgress)
+                        .tint(model.accentColor)
+                }
+            } else if let r = model.speedTestResult {
+                HStack(spacing: 14) {
+                    speedBox(title: "延迟", value: r.pingMs.map { String(format: "%.0f", $0) } ?? "--", unit: "ms", color: .cyan)
+                    speedBox(title: "下载", value: r.downloadMbps.map { String(format: "%.1f", $0) } ?? "--", unit: "Mbps", color: .green)
+                    speedBox(title: "上传", value: r.uploadMbps.map { String(format: "%.1f", $0) } ?? "--", unit: "Mbps", color: .orange)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("测于 \(r.date.formatted(date: .omitted, time: .standard))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Button("重测") { model.runSpeedTest() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                    }
+                }
+                if let note = r.note {
+                    Text(note)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .padding(.top, 4)
+                }
+            } else {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("一键测试：延迟（ping）+ 下载 + 上传")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("使用 Cloudflare 测速节点，全程约 10-20 秒")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    Button("开始测速") { model.runSpeedTest() }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    private func speedBox(title: String, value: String, unit: String, color: Color) -> some View {
+        VStack(spacing: 0) {
+            Text(value)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(color)
+            HStack(spacing: 2) {
+                Text(title).font(.caption2).foregroundStyle(.secondary)
+                Text(unit).font(.caption2).foregroundStyle(.tertiary)
+            }
+        }
     }
 
     // MARK: 磁盘大文件扫描
