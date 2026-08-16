@@ -29,7 +29,7 @@ final class PressureTestEngine {
                     _ = x
                 }
             }
-            t.qualityOfService = .userInteractive
+            t.qualityOfService = .utility   // 低优先级，避免满载时抢 UI 线程导致 App 无响应
             t.name = "hwmon-pressure"
             t.start()
             threads.append(t)
