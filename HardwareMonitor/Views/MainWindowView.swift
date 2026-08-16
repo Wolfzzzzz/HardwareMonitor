@@ -57,6 +57,7 @@ struct MainWindowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 overviewGrid
+                systemOverviewBar
                 Divider()
                 HStack(alignment: .top, spacing: 14) {
                     trendsColumn
@@ -104,6 +105,36 @@ struct MainWindowView: View {
             s += " · 风扇 \(Int(fan.1)) RPM"
         }
         return s
+    }
+
+    /// 免费版系统概览条：开机时长 / 系统 / CPU / 今日流量
+    private var systemOverviewBar: some View {
+        HStack(spacing: 10) {
+            overviewItem(icon: "clock", text: "开机 \(model.uptimeText)")
+            overviewItem(icon: "macbook", text: model.systemVersion)
+            overviewItem(icon: "cpu.fill", text: shortChipName)
+            overviewItem(icon: "arrow.up.arrow.down",
+                         text: "今日 ↓\(String(format: "%.0f", model.todayTrafficInMB))MB ↑\(String(format: "%.0f", model.todayTrafficOutMB))MB")
+        }
+        .padding(10)
+        .glassBackground(cornerRadius: 10)
+    }
+
+    private func overviewItem(icon: String, text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon).font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(text)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    /// 简短芯片名（如 Apple M5 → M5）
+    private var shortChipName: String {
+        let b = model.cpuBrand
+        if let c = model.detectedChip { return c.name }
+        return b.isEmpty ? "Apple Silicon" : b
     }
 
     private var overviewGrid: some View {
