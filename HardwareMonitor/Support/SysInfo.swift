@@ -161,10 +161,38 @@ struct SpeedTestResult {
 }
 
 /// 轻量测速引擎：延迟(ping) + 下载(Cloudflare) + 上传(Cloudflare)
-final class SpeedTestEngine {
+/// 进度基于真实字节传输（下载 = 已接收/24MB，上传 = 已发送/12MB），避免模拟进度误导
+final class SpeedTestEngine: NSObject, URLSessionDataDelegate {
     private let downURL = URL(string: "https://speed.cloudflare.com/__down?bytes=25165824")!  // 24MB
     private let upURL = URL(string: "https://speed.cloudflare.com/__up")!
     private let upBytes = 12_582_912  // 12MB
+
+    // 进度状态（delegate 回调写入）
+    private var receivedBytes: Int64 = 0
+    private var expectedBytes: Int64 = 0
+    private var downProgressCb: ((Double) -> Void)?
+    private var upProgressCb: ((Double) -> Void)?
+
+    // MARK: URLSessionDataDelegate
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        expectedBytes = response.expectedContentLength > 0 ? response.expectedContentLength : 25_165_824
+        receivedBytes = 0
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        receivedBytes += Int64(data.count)
+        if expectedBytes > 0 {
+            downProgressCb?(min(1.0, Double(receivedBytes) / Double(expectedBytes)))
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        if totalBytesExpectedToSend > 0 {
+            upProgressCb?(Double(totalBytesSent) / Double(totalBytesExpectedToSend))
+        }
+    }
 
     /// 完整测速：延迟 → 下载 → 上传，每阶段回调进度(0-1)与阶段名
     func run(progress: @escaping (Double, String) -> Void, completion: @escaping (SpeedTestResult) -> Void) {
@@ -213,9 +241,13 @@ final class SpeedTestEngine {
     private func measureDownload(progress: @escaping (Double) -> Void) -> Double? {
         let sema = DispatchSemaphore(value: 0)
         var result: Double?
+        var didFinish = false
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForResource = 30
-        let session = URLSession(configuration: config)
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        downProgressCb = progress
+        receivedBytes = 0
+        expectedBytes = 0
         let start = Date()
         let task = session.dataTask(with: downURL) { data, _, error in
             defer { sema.signal() }
@@ -224,14 +256,12 @@ final class SpeedTestEngine {
             if secs > 0.05 {
                 result = Double(data.count) * 8 / secs / 1_000_000  // Mbps
             }
+            didFinish = true
         }
         task.resume()
-        // 简单进度：轮询任务进度（URLSession 无标准进度，用计时模拟）
-        var poll = 0
-        while sema.wait(timeout: .now() + 0.05) == .timedOut, poll < 600 {
-            progress(min(1.0, Double(poll) / 30.0))
-            poll += 1
-        }
+        // 等待完成；delegate 已在 didReceive 上报真实字节进度
+        _ = sema.wait(timeout: .now() + 30)
+        _ = didFinish
         return result
     }
 
@@ -240,7 +270,8 @@ final class SpeedTestEngine {
         var result: Double?
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForResource = 30
-        let session = URLSession(configuration: config)
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        upProgressCb = progress
         var req = URLRequest(url: upURL)
         req.httpMethod = "POST"
         req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
@@ -255,11 +286,7 @@ final class SpeedTestEngine {
             }
         }
         task.resume()
-        var poll = 0
-        while sema.wait(timeout: .now() + 0.05) == .timedOut, poll < 600 {
-            progress(min(1.0, Double(poll) / 30.0))
-            poll += 1
-        }
+        _ = sema.wait(timeout: .now() + 30)
         return result
     }
 }
