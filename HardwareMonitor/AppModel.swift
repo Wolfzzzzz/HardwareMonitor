@@ -144,6 +144,54 @@ final class AppModel: ObservableObject {
     /// 告警历史（Premium）
     var alertHistory: [AlertEngine.AlertRecord] { alertEngine.history }
     func clearAlertHistory() { alertEngine.clearHistory() }
+
+    // MARK: - WiFi 详情（Deluxe+）
+
+    @Published var wifiInfo: WiFiInfo?
+    @Published var wifiUpdatedAt: Date?
+
+    func refreshWiFiInfo() {
+        wifiInfo = fetchWiFiInfo()
+        wifiUpdatedAt = Date()
+    }
+
+    // MARK: - 磁盘健康（Premium）
+
+    @Published var diskHealth: DiskHealth?
+    @Published var diskHealthCheckedAt: Date?
+
+    func checkDiskHealth() {
+        diskHealth = fetchDiskHealth()
+        diskHealthCheckedAt = Date()
+    }
+
+    // MARK: - 网络测速（Premium）
+
+    @Published var speedTestResult: SpeedTestResult?
+    @Published var speedTesting = false
+    @Published var speedProgress: Double = 0
+    @Published var speedStageText = ""
+    private let speedEngine = SpeedTestEngine()
+
+    func runSpeedTest() {
+        guard !speedTesting else { return }
+        speedTesting = true
+        speedProgress = 0
+        speedStageText = "准备中…"
+        speedEngine.run(progress: { [weak self] p, stage in
+            Task { @MainActor in
+                self?.speedProgress = p
+                self?.speedStageText = stage
+            }
+        }, completion: { [weak self] result in
+            Task { @MainActor in
+                self?.speedTestResult = result
+                self?.speedTesting = false
+                self?.speedProgress = 1
+                self?.speedStageText = "完成"
+            }
+        })
+    }
     /// 是否 Premium Deluxe
     var isPremium: Bool { proTier == .premium }
 
