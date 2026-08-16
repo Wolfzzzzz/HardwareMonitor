@@ -949,6 +949,21 @@ final class AppModel: ObservableObject {
 
     /// 锁屏（macOS 27 已移除 CGSession，改用系统锁屏快捷键 ⌃⌘Q；首次需允许「辅助功能」权限）
     func lockScreen() {
+        // 锁屏通过模拟快捷键（⌃⌘Q）实现，需要「辅助功能」权限；无权限时明确引导而非静默失败
+        guard CGPreflightPostEventAccess() else {
+            let alert = NSAlert()
+            alert.messageText = "锁屏需要辅助功能权限"
+            alert.informativeText = "锁屏通过模拟系统快捷键实现，需要「辅助功能」权限。\n\n请到 系统设置 → 隐私与安全性 → 辅助功能 → 打开 HardwareMonitor 的开关，然后重试。"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "去设置")
+            alert.addButton(withTitle: "取消")
+            if alert.runModal() == .alertFirstButtonReturn {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            return
+        }
         let script = "tell application \"System Events\" to keystroke \"q\" using {control down, command down}"
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
