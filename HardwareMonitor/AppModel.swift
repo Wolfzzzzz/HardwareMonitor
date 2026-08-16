@@ -378,6 +378,72 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: - 免费功能：系统概览
+
+    /// 开机时长（秒）
+    var uptimeSeconds: TimeInterval {
+        var boot = timeval()
+        var size = MemoryLayout<timeval>.size
+        sysctlbyname("kern.boottime", &boot, &size, nil, 0)
+        return Date().timeIntervalSince1970 - TimeInterval(boot.tv_sec)
+    }
+
+    /// 开机时长文案
+    var uptimeText: String {
+        let s = Int(uptimeSeconds)
+        let d = s / 86400, h = (s % 86400) / 3600, m = (s % 3600) / 60
+        if d > 0 { return "\(d) 天 \(h) 小时" }
+        if h > 0 { return "\(h) 小时 \(m) 分" }
+        return "\(m) 分钟"
+    }
+
+    /// 今日流量（累计，MB）
+    @Published var todayTrafficInMB: Double = 0
+    @Published var todayTrafficOutMB: Double = 0
+    private var lastNetBytes: (UInt64, UInt64)?
+    private var trafficDay = ""
+    private var trafficTick = 0
+
+    /// 采样网络计数器差值累计今日流量（每 30 次采样调用一次 ≈30s）
+    private func sampleTraffic() {
+        guard let b = readNetBytes() else { return }
+        let day = Date().formatted(.dateTime.day().month())
+        if trafficDay != day {
+            trafficDay = day
+            todayTrafficInMB = 0
+            todayTrafficOutMB = 0
+            lastNetBytes = b
+            saveTraffic()
+            return
+        }
+        if let last = lastNetBytes {
+            if b.0 >= last.0 { todayTrafficInMB += Double(b.0 - last.0) / 1_000_000 }
+            if b.1 >= last.1 { todayTrafficOutMB += Double(b.1 - last.1) / 1_000_000 }
+        }
+        lastNetBytes = b
+        saveTraffic()
+    }
+
+    private func saveTraffic() {
+        UserDefaults.standard.set(todayTrafficInMB, forKey: "todayTrafficInMB")
+        UserDefaults.standard.set(todayTrafficOutMB, forKey: "todayTrafficOutMB")
+        UserDefaults.standard.set(trafficDay, forKey: "trafficDay")
+    }
+
+    /// 读取 en0 网络计数器（netstat -ib：Ibytes=列6，Obytes=列9）
+    private func readNetBytes() -> (UInt64, UInt64)? {
+        guard let out = runCommandCapture("/usr/sbin/netstat", ["-ib"]) else { return nil }
+        for line in out.components(separatedBy: "\n") {
+            let cols = line.split(separator: " ").map(String.init)
+            if cols.count > 10, cols[0] == "en0", cols[2].hasPrefix("<Link") {
+                if let i = UInt64(cols[6]), let o = UInt64(cols[9]) {
+                    return (i, o)
+                }
+            }
+        }
+        return nil
+    }
+
     /// 写入 App Group 共享快照（桌面小组件读取）
     private func writeSharedSnapshot(_ snap: SystemSnapshot) {
         struct Shared: Codable {
@@ -613,6 +679,9 @@ final class AppModel: ObservableObject {
         themeID = d.string(forKey: "themeID") ?? "aurora"
         appearanceID = d.string(forKey: "appearanceID") ?? "system"
         proTier = ProTier(rawValue: d.string(forKey: "proTier") ?? "") ?? .free
+        todayTrafficInMB = d.double(forKey: "todayTrafficInMB")
+        todayTrafficOutMB = d.double(forKey: "todayTrafficOutMB")
+        trafficDay = d.string(forKey: "trafficDay") ?? ""
         customAccentHex = d.string(forKey: "customAccentHex") ?? "FF9F43"
         dockBadgeEnabled = d.bool(forKey: "dockBadgeEnabled")
         // init 中首次赋值不触发 didSet，需手动同步激活模式
@@ -668,6 +737,11 @@ final class AppModel: ObservableObject {
             self.refreshAlertActive(snap)
             self.updateDockBadge()
             self.writeSharedSnapshot(snap)
+            // 今日流量统计（约每 30 秒采样一次，netstat 有进程开销）
+            self.trafficTick += 1
+            if self.trafficTick % 30 == 0 {
+                self.sampleTraffic()
+            }
         }
         hub.start(interval: refreshInterval)
         hub.sampleNow()
