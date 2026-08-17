@@ -7,18 +7,11 @@ struct MenuBarLabel: View {
         HStack(spacing: 4) {
             Image(systemName: model.alertActive ? "flame.fill" : "thermometer.medium")
                 .foregroundStyle(model.alertActive ? .red : model.accentColor)
-            if let t = model.snapshot.cpuTempC {
-                Text(String(format: "%.0f°", t))
-                    .monospacedDigit()
-                    .foregroundStyle(t > 85 ? .red : (t > 70 ? .orange : .primary))
-            }
-            Text("·")
-                .foregroundStyle(.secondary)
-            Text(String(format: "%.0f%%", model.snapshot.cpuPercentValue * 100))
+            Text(model.menuBarText)
+                .font(.system(size: 12, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(model.menuBarColor)
         }
-        .font(.system(size: 12, weight: .medium))
         .padding(.horizontal, 2)
     }
 }
