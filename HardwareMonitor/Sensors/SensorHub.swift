@@ -81,15 +81,15 @@ final class SensorHub {
         snap.netDown = netNow.down
         snap.netUp = netNow.up
 
-        // 进程排行（低频：每 6 次采样一次，约 6s；全量扫描开销最大，6s 足够 TOP 排行）
+        // 进程排行（低频：每 8 次采样一次，约 8s；全量扫描开销最大，8s 足够 TOP 排行）
         tick += 1
-        if tick % 6 == 1 {
+        if tick % 8 == 1 {
             cachedProcesses = proc.sample(elapsed: elapsed, top: 10)
         }
         snap.topProcesses = cachedProcesses
 
-        // 温度与风扇（低频：每 3 次采样一次，约 3s；温度变化慢，省 IPC 开销）
-        if tick % 3 == 1 {
+        // 温度与风扇（低频：每 5 次采样一次，约 5s；温度变化慢，减少 SMC/HID IPC 开销）
+        if tick % 5 == 1 {
             // SMC 与 HID 同时采样，CPU 温度取两者更高值（对齐第三方工具读数）
             var hidTemps: [(key: String, value: Double)] = []
             var smcTemps: [(key: String, value: Double)] = []
