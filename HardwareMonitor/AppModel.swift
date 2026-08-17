@@ -416,9 +416,8 @@ final class AppModel: ObservableObject {
     private var trafficDay = ""
     private var trafficTick = 0
 
-    /// 采样网络计数器差值累计今日流量（每 30 次采样调用一次 ≈30s）
-    private func sampleTraffic() {
-        guard let b = readNetBytes() else { return }
+    /// 主线程累加网络差值（读取已在后台完成）
+    private func accumulateTraffic(_ b: (UInt64, UInt64)) {
         let day = Date().formatted(.dateTime.day().month())
         if trafficDay != day {
             trafficDay = day
@@ -740,19 +739,35 @@ final class AppModel: ObservableObject {
             self.snapshot = snap
             self.lastUpdated = Date()
             self.appendHistory(snap)
-            // 图表数据仅在界面可见时同步（每 3 次快照一次），窗口全关时零刷新零触发
             self.uiTick += 1
-            if self.uiTick % 3 == 1, self.mainWindowVisible || self.isPanelVisible {
-                self.chartHistory = self.history
+            // 图表：5 秒节流 + 只渲染最近 300 点（全量 1200 点每秒重绘是卡顿主因）
+            if self.uiTick % 5 == 1, self.mainWindowVisible || self.isPanelVisible {
+                self.chartHistory = Array(self.history.suffix(300))
             }
             self.alertEngine.check(snap, model: self)
             self.refreshAlertActive(snap)
             self.updateDockBadge()
-            self.writeSharedSnapshot(snap)
-            // 今日流量统计（约每 30 秒采样一次，netstat 有进程开销）
+            // 菜单栏文本 2 秒节流（MenuBarExtra 高频刷新卡菜单栏）
+            if self.uiTick % 2 == 1 {
+                let t = snap.cpuTempC
+                self.menuBarText = (t.map { String(format: "%.0f°", $0) } ?? "--")
+                    + " · " + String(format: "%.0f%%", snap.cpuPercentValue * 100)
+                self.menuBarColor = t.map { $0 > 85 ? .red : ($0 > 70 ? .orange : .primary) } ?? .primary
+            }
+            // 重活移后台：widget 共享 JSON 编码 + netstat 流量（约 30 秒一次）
             self.trafficTick += 1
             if self.trafficTick % 30 == 0 {
-                self.sampleTraffic()
+                DispatchQueue.global(qos: .utility).async { [weak self] in
+                    guard let self else { return }
+                    let bytes = self.readNetBytes()
+                    DispatchQueue.main.async {
+                        guard let bytes else { return }
+                        self.accumulateTraffic(bytes)
+                    }
+                }
+            }
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                self?.writeSharedSnapshot(snap)
             }
         }
         hub.start(interval: refreshInterval)
@@ -772,6 +787,10 @@ final class AppModel: ObservableObject {
         hub.start(interval: refreshInterval)
         hub.sampleNow()
     }
+
+    /// 菜单栏文本（每 2 次采样更新，避免 MenuBarExtra 高频刷新卡菜单栏）
+    @Published var menuBarText = "-- · --%"
+    @Published var menuBarColor: Color = .primary
 
     /// 历史采样点上限（按版本）
     var historyLimit: Int {
