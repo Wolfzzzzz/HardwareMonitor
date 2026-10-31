@@ -32,7 +32,7 @@ final class HIDSensorReader {
     private var eventFloatFn: EventFloatFn?
 
     init() {
-        guard let handle = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY) else { return }
+        guard dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY) != nil else { return }
         createFn = load("IOHIDEventSystemClientCreate")
         setMatchingFn = load("IOHIDEventSystemClientSetMatching")
         copyServicesFn = load("IOHIDEventSystemClientCopyServices")
@@ -41,9 +41,9 @@ final class HIDSensorReader {
         eventTypeFn = load("IOHIDEventGetType")
         eventFloatFn = load("IOHIDEventGetFloatValue")
 
+        // init 里只需确保服务/属性三个能加载；温度事件相关的 fn 在 sample() 里再 guard
         guard let create = createFn, let setMatching = setMatchingFn,
-              let copyServices = copyServicesFn, let copyEvent = copyEventFn,
-              let eventType = eventTypeFn, let eventFloat = eventFloatFn else { return }
+              let copyServices = copyServicesFn else { return }
 
         guard let client = create(nil)?.takeRetainedValue() else { return }
         self.client = client
@@ -54,11 +54,11 @@ final class HIDSensorReader {
 
         guard let arr = copyServices(client)?.takeRetainedValue() as? [Any] else { return }
         for item in arr {
-            let svc = item as! CFTypeRef
+            let svc = item as CFTypeRef
             let name = propertyString(svc, "Product") ?? "?"
             let usage = UInt32(propertyInt(svc, "PrimaryUsage") ?? 0)
-            // 温度类服务：usage 5（温度）且名字包含温度相关关键词
-            if usage == 5, isTemperatureName(name) {
+            // 温度类服务：usage 5（温度）全部加入（不过滤名字，GPU/校准等温度服务不丢）
+            if usage == 5 {
                 services.append((ref: svc, name: name, usage: usage))
             }
         }
@@ -66,8 +66,9 @@ final class HIDSensorReader {
     }
 
     private func load<T>(_ name: String) -> T? {
-        guard let handle = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY),
-              let sym = dlsym(handle, name) else { return nil }
+        let h = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY)
+        guard h != nil else { return nil }
+        guard let sym = dlsym(h, name) else { return nil }
         return unsafeBitCast(sym, to: T.self)
     }
 
@@ -77,17 +78,19 @@ final class HIDSensorReader {
 
     private func propertyString(_ svc: CFTypeRef, _ key: String) -> String? {
         guard let fn = copyPropertyFn else { return nil }
-        guard let v = fn(svc, cfString(key))?.takeRetainedValue(),
-              CFGetTypeID(v) == CFStringGetTypeID() else { return nil }
+        guard let raw = fn(svc, cfString(key)) else { return nil }
+        let v: CFTypeRef = raw.takeRetainedValue()
+        guard CFGetTypeID(v) == CFStringGetTypeID() else { return nil }
         return v as? String
     }
 
     private func propertyInt(_ svc: CFTypeRef, _ key: String) -> Int? {
         guard let fn = copyPropertyFn else { return nil }
-        guard let v = fn(svc, cfString(key))?.takeRetainedValue(),
-              CFGetTypeID(v) == CFNumberGetTypeID() else { return nil }
+        guard let raw = fn(svc, cfString(key)) else { return nil }
+        let v: CFTypeRef = raw.takeRetainedValue()
+        guard CFGetTypeID(v) == CFNumberGetTypeID() else { return nil }
         var i = 0
-        CFNumberGetValue((v as! CFNumber), .intType, &i)
+        CFNumberGetValue(unsafeBitCast(v, to: CFNumber.self), .intType, &i)
         return i
     }
 
@@ -99,12 +102,12 @@ final class HIDSensorReader {
 
     /// 拉取全部温度，返回 (传感器列表, CPU 温度=tdie 最大值, GPU=nil)
     func sample() -> (temps: [(key: String, value: Double)], cpuTemp: Double?, gpuTemp: Double?) {
-        guard isAvailable, let copyEvent = copyEventFn,
+        guard isAvailable else { return ([], nil, nil) }
+        guard let copyEvent = copyEventFn,
               let eventType = eventTypeFn, let eventFloat = eventFloatFn else {
             return ([], nil, nil)
         }
         var temps: [(String, Double)] = []
-        var tdieMax: Double?
         for svc in services {
             guard let ev = copyEvent(svc.ref, 15, 0, 0xFF00, svc.usage)?.takeRetainedValue() else { continue }
             let t = eventType(ev)
@@ -112,11 +115,16 @@ final class HIDSensorReader {
             // 过滤无效读数
             guard v.isFinite, v > -50, v < 150 else { continue }
             temps.append((svc.name, v))
-            if svc.name.lowercased().contains("tdie") {
-                tdieMax = max(tdieMax ?? -1000, v)
-            }
         }
         temps.sort { $0.0 < $1.0 }
-        return (temps, tdieMax, nil)
+        // GPU 温度：找名字含 gpu/tg0/gfx 的传感器（M 系列 PMU 常见命名）
+        var gpuMax: Double?
+        for (name, v) in temps {
+            let n = name.lowercased()
+            if n.hasPrefix("tg0") || n.contains("gpu") || n.contains("gfx") {
+                gpuMax = max(gpuMax ?? -1000, v)
+            }
+        }
+        return (temps, temps.map { $0.1 }.max(), gpuMax)
     }
 }

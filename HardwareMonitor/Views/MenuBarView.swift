@@ -1,10 +1,38 @@
 import SwiftUI
 
+/// 菜单栏图标旁的实时数值（类似 iStat Menus）
+struct MenuBarLabel: View {
+    @EnvironmentObject private var model: AppModel
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: model.alertActive ? "flame.fill" : "thermometer.medium")
+                .foregroundStyle(model.alertActive ? .red : model.accentColor)
+            Text(model.menuBarText)
+                .font(.system(size: 12, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(model.menuBarColor)
+        }
+        .padding(.horizontal, 2)
+    }
+}
+
 /// 菜单栏点击后的概览窗口
 struct MenuBarView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
+
+    private func quickAction(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Image(systemName: icon).font(.system(size: 14))
+                Text(title).font(.system(size: 10))
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .glassButton(cornerRadius: 8)
+        }
+        .buttonStyle(.plain)
+    }
 
     private func openMainWindow() {
         openWindow(id: "main")
@@ -82,6 +110,16 @@ struct MenuBarView: View {
 
     private var actions: some View {
         VStack(spacing: 2) {
+            // 快捷操作
+            HStack(spacing: 4) {
+                quickAction("清理缓存", "trash") { model.clearUserCaches() }
+                quickAction("截图", "camera.viewfinder") { model.takeScreenshot() }
+                quickAction("显示隐藏", model.showHiddenFiles ? "eye.slash" : "eye") { model.toggleHiddenFiles() }
+                quickAction("杀占用", "exclamationmark.octagon") { model.killTopProcess() }
+            }
+
+            Divider().padding(.vertical, 4)
+
             Button {
                 openMainWindow()
             } label: {

@@ -195,3 +195,9 @@
 "复制 %@" = "Copy %@";
 "等级 %@ / 10" = "Level %@ / 10";
 "风扇 %@" = "Fan %@";
+
+/* Language switch confirm */
+"切换语言" = "Switch Language";
+"重启生效" = "Restart Now";
+"取消" = "Cancel";
+"切换语言后应用会自动重启以生效" = "The app will restart automatically to apply the language.";

@@ -8,6 +8,18 @@ final class AlertEngine {
     private var lastFired: [String: Date] = [:]
     private let cooldown: TimeInterval = 60
 
+    /// 告警历史（Premium 查看）
+    struct AlertRecord: Identifiable {
+        let id = UUID()
+        let key: String
+        let title: String
+        let body: String
+        let time: Date
+    }
+    private(set) var history: [AlertRecord] = []
+
+    func clearHistory() { history.removeAll() }
+
     func requestAuthorizationIfNeeded() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
@@ -46,6 +58,8 @@ final class AlertEngine {
     }
 
     private func fire(key: String, title: String, body: String, sound: Bool) {
+        history.insert(AlertRecord(key: key, title: title, body: body, time: Date()), at: 0)
+        if history.count > 100 { history.removeLast() }
         let now = Date()
         if let last = lastFired[key], now.timeIntervalSince(last) < cooldown { return }
         lastFired[key] = now

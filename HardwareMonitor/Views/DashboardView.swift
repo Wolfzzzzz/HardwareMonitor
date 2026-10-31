@@ -66,6 +66,7 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(width: 400, height: 600)
+        .background(Color.clear)
     }
 
     /// 当前温度来源列表（HID 优先，SMC 备用）
@@ -162,7 +163,8 @@ struct DashboardView: View {
     }
     private var tempSub: String {
         if let t = model.snapshot.cpuTempC {
-            return "GPU " + Fmt.temp(model.snapshot.gpuTempC) + " · \(model.snapshot.hidTemperatures.count) 个传感器"
+            let gpu = model.snapshot.gpuTempC.map(Fmt.temp) ?? "该机型不提供"
+            return "GPU \(gpu) · \(model.snapshot.hidTemperatures.count) 个传感器"
         }
         if let t = model.snapshot.batteryTempC { return LZ.t("电池 ", "Battery ") + Fmt.temp(t) }
         return "系统未开放温度接口"
@@ -251,6 +253,7 @@ struct DashboardView: View {
 
 /// 通用统计卡片
 struct StatCard: View {
+    @EnvironmentObject private var model: AppModel
     let title: String
     let icon: String
     let color: Color
@@ -287,9 +290,6 @@ struct StatCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.primary.opacity(0.05))
-        )
+        .glassBackground(cornerRadius: 12)
     }
 }

@@ -4,7 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
 
-    private var tempDetail: String {
+    private var tempDetail: LocalizedStringKey {
         if model.smcAvailable { return "SMC 可用" }
         if model.hidAvailable { return "HID 传感器可用（CPU 温度 = 芯片 tdie 最大值）" }
         return "当前系统未开放温度接口"
@@ -20,7 +20,7 @@ struct SettingsView: View {
                     Text("5 秒").tag(5.0)
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: model.refreshInterval) { _ in
+                .onChange(of: model.refreshInterval) { _, _ in
                     model.restartSampling()
                 }
                 Text("刷新间隔越小，数据越实时，占用会略高")
@@ -31,6 +31,12 @@ struct SettingsView: View {
             Section {
                 Toggle("启用告警", isOn: $model.alertsEnabled)
                 Toggle("告警提示音", isOn: $model.alertSound)
+                Button("检查通知权限") { model.checkNotificationPermission() }
+                if let msg = model.notificationStatusMessage {
+                    Text(msg)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("告警开关")
             }
@@ -87,7 +93,7 @@ struct SettingsView: View {
 
             Section("开机自启") {
                 Toggle("登录时自动启动", isOn: $model.launchAtLogin)
-                    .onChange(of: model.launchAtLogin) { _ in
+                    .onChange(of: model.launchAtLogin) { _, _ in
                         model.toggleLaunchAtLogin()
                     }
                 if let err = model.launchAtLoginError {
@@ -103,12 +109,43 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("版本") {
-                    Text("1.0.0").foregroundStyle(.secondary)
+                    Text("26DF10Q1beta.0.0.3").foregroundStyle(.secondary)
                 }
             } header: {
                 Text("关于")
             } footer: {
                 Text("本应用仅读取硬件数据，不进行任何写入或调节。\n温度与风扇依赖系统 SMC 接口：当前 macOS 27 beta 未开放时自动降级为电池温度参考。")
+            }
+
+            Section {
+                Link("通过邮件反馈", destination: URL(string: "mailto:zhang429500@icloud.com?subject=HardwareMonitor%20反馈")!)
+                Link("在 GitHub 提交 Issue", destination: URL(string: "https://github.com/Wolfzzzzz/HardwareMonitor/issues")!)
+            } header: {
+                Text("反馈")
+            }
+
+            Section {
+                Picker("语言 / Language", selection: $model.pendingLanguage) {
+                    Text("跟随系统").tag("system")
+                    Text("English").tag("en")
+                    Text("Français").tag("fr")
+                    Text("简体中文（中国大陆）").tag("zh-Hans")
+                    Text("繁體中文（香港）").tag("zh-Hant-HK")
+                    Text("繁體中文（台灣）").tag("zh-Hant-TW")
+                    Text("Русский").tag("ru")
+                }
+                .pickerStyle(.menu)
+                .onChange(of: model.pendingLanguage) { _, _ in
+                    model.requestLanguageConfirm()
+                }
+                .alert("切换语言", isPresented: $model.showLanguageConfirm) {
+                    Button("重启生效") { model.confirmPendingLanguage() }
+                    Button("取消", role: .cancel) { model.cancelPendingLanguage() }
+                } message: {
+                    Text("切换语言后应用会自动重启以生效")
+                }
+            } header: {
+                Text("语言 / Language")
             }
         }
         .formStyle(.grouped)
@@ -116,12 +153,12 @@ struct SettingsView: View {
     }
 }
 
-/// 阈值调节行
+/// 阈值调节行（title/detail 走 LocalizedStringKey，自动按当前语言查表）
 struct ThresholdRow: View {
-    let title: String
-    let detail: String?
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey?
     @Binding var value: Double
-    let unit: String
+    let unit: String  // °C 这种通用符号各语言一致，无需翻译
     let range: ClosedRange<Double>
     let step: Double
 

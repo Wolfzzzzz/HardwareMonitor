@@ -24,15 +24,24 @@ struct MainWindowView: View {
             } else if model.mainTab == 1 {
                 ClipboardView()
                     .environmentObject(model)
-            } else {
+            } else if model.mainTab == 2 {
                 ToolsView()
                     .environmentObject(model)
             }
         }
         .onAppear { model.setMainWindowVisible(true) }
         .onDisappear { model.setMainWindowVisible(false) }
+        .tint(model.accentColor)
+        .preferredColorScheme(model.preferredColorScheme)
         .frame(minWidth: 780, minHeight: 560)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(
+            LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
+                .overlay(Color.black.opacity(0.25))
+        )
+        .sheet(isPresented: $model.showBenchmarkSheet) {
+            BenchmarkView()
+                .environmentObject(model)
+        }
     }
 
     /// 监控页内容
@@ -40,6 +49,7 @@ struct MainWindowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 overviewGrid
+                systemOverviewBar
                 Divider()
                 HStack(alignment: .top, spacing: 14) {
                     trendsColumn
@@ -80,11 +90,50 @@ struct MainWindowView: View {
 
     // MARK: 概览卡片
 
+    /// 温度卡副标题（GPU + 风扇）
+    private var tempSubText: String {
+        var s = model.snapshot.gpuTempC.map { "GPU " + Fmt.temp($0) } ?? "GPU 该机型不提供"
+        if let fan = model.snapshot.smcFans.first {
+            s += " · 风扇 \(Int(fan.1)) RPM"
+        }
+        return s
+    }
+
+    /// 免费版系统概览条：开机时长 / 系统 / CPU / 今日流量
+    private var systemOverviewBar: some View {
+        HStack(spacing: 10) {
+            overviewItem(icon: "clock", text: "开机 \(model.uptimeText)")
+            overviewItem(icon: "macbook", text: model.systemVersion)
+            overviewItem(icon: "cpu.fill", text: shortChipName)
+            overviewItem(icon: "arrow.up.arrow.down",
+                         text: "今日 ↓\(String(format: "%.0f", model.todayTrafficInMB))MB ↑\(String(format: "%.0f", model.todayTrafficOutMB))MB")
+        }
+        .padding(10)
+        .glassBackground(cornerRadius: 10)
+    }
+
+    private func overviewItem(icon: String, text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon).font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(text)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    /// 简短芯片名（如 Apple M5 → M5）
+    private var shortChipName: String {
+        let b = model.cpuBrand
+        if let c = model.detectedChip { return c.name }
+        return b.isEmpty ? "Apple Silicon" : b
+    }
+
     private var overviewGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
             StatCard(title: "芯片温度", icon: "thermometer", color: .orange,
                      value: Fmt.temp(model.snapshot.cpuTempC),
-                     sub: "GPU " + Fmt.temp(model.snapshot.gpuTempC),
+                     sub: tempSubText,
                      progress: model.snapshot.referenceTempC.map { max(0, min(1, $0 / 110)) })
             StatCard(title: "CPU 占用", icon: "cpu", color: .blue,
                      value: String(format: "%.0f%%", model.snapshot.cpuPercentValue),
