@@ -2,7 +2,7 @@
 //  FocusView.swift
 //  HardwareMonitor
 //
-//  版本 26DF10Q1beta.0.0.7 —— 专注页（主窗口第 4 个 tab）
+//  版本 26DF10Q1beta1.0.7 —— 专注页（主窗口第 4 个 tab）
 //  包含：精确时钟 / 番茄钟 / 噪音检测 / 结束提示音 / 今日统计
 //
 

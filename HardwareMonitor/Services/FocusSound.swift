@@ -2,7 +2,7 @@
 //  FocusSound.swift
 //  HardwareMonitor
 //
-//  版本 26DF10Q1beta.0.0.7 —— 专注模块：番茄钟结束提示音
+//  版本 26DF10Q1beta1.0.7 —— 专注模块：番茄钟结束提示音
 //  支持内置系统音（NSSound）与自定义音频文件（AVAudioPlayer），音量独立于系统音量。
 //  自定义文件复制到 ~/Library/Application Support/HardwareMonitor/Sounds/。
 //

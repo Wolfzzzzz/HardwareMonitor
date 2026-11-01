@@ -116,6 +116,45 @@ struct SettingsView: View {
                     get: { model.focusSound.enabled },
                     set: { model.focusSound.enabled = $0 }
                 ))
+
+                Picker("音源", selection: Binding(
+                    get: { model.focusSound.useCustom ? 1 : 0 },
+                    set: { model.focusSound.useCustom = ($0 == 1) }
+                )) {
+                    Text("内置音效").tag(0)
+                    Text("自定义音频").tag(1)
+                }
+                .pickerStyle(.segmented)
+
+                if model.focusSound.useCustom {
+                    HStack(spacing: 8) {
+                        Text(model.focusSound.customFileName ?? "尚未选择音频文件")
+                            .font(.caption)
+                            .foregroundStyle(model.focusSound.customFileName == nil ? .secondary : .primary)
+                            .lineLimit(1)
+                        Spacer()
+                        Button("选择…") { model.focusSound.importCustomFile() }
+                            .controlSize(.small)
+                        if model.focusSound.customFileName != nil {
+                            Button("移除") { model.focusSound.removeCustom() }
+                                .controlSize(.small)
+                        }
+                    }
+                } else {
+                    Picker("内置音效", selection: Binding(
+                        get: { model.focusSound.systemSoundName },
+                        set: { newValue in
+                            model.focusSound.systemSoundName = newValue
+                            model.focusSound.preview()
+                        }
+                    )) {
+                        ForEach(FocusSoundPlayer.systemSounds, id: \.self) { name in
+                            Text(name).tag(name)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+
                 HStack {
                     Image(systemName: model.focusSound.volume == 0 ? "speaker.slash" : "speaker.wave.2")
                         .foregroundStyle(.secondary)
@@ -127,11 +166,17 @@ struct SettingsView: View {
                         .font(.caption.monospacedDigit())
                         .frame(width: 40, alignment: .trailing)
                 }
-                Button("试听提示音") { model.focusSound.preview() }
+                HStack {
+                    Button("试听提示音") { model.focusSound.preview() }
+                    Spacer()
+                    Text(model.focusSound.currentDescription)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("专注与噪音")
             } footer: {
-                Text("噪音检测关闭后完全不占用麦克风，系统麦克风指示灯会熄灭。提示音支持内置音效或自定义音频文件。")
+                Text("噪音检测关闭后完全不占用麦克风，系统麦克风指示灯会熄灭。\n提示音支持内置音效或自定义音频文件（mp3 / wav / m4a / aiff / caf），可单独调音量。")
             }
 
             Section {
@@ -149,7 +194,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("版本") {
-                    Text("26DF10Q1beta.0.0.7").foregroundStyle(.secondary)
+                    Text(AppVersion.display).foregroundStyle(.secondary)
                 }
             } header: {
                 Text("关于")

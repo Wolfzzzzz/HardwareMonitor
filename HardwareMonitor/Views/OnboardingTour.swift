@@ -2,7 +2,7 @@
 //  OnboardingTour.swift
 //  HardwareMonitor
 //
-//  首次启动漫游式引导教程（版本 26DF10Q1beta.0.0.7）
+//  首次启动漫游式引导教程（版本 26DF10Q1beta1.0.7）
 //
 //  设计要点：
 //  1. 整窗暗色遮罩 + 圆角矩形挖洞高亮，挖洞用 Path + even-odd 填充实现；

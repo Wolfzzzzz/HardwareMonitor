@@ -540,7 +540,7 @@ struct ColorToolsView: View {
     }
 }
 
-// MARK: - 7 番茄钟（26DF10Q1beta.0.0.7 起迁移到「专注」标签页）
+// MARK: - 7 番茄钟（26DF10Q1beta1.0.7 起迁移到「专注」标签页）
 
 struct PomodoroView: View {
     @EnvironmentObject private var model: AppModel

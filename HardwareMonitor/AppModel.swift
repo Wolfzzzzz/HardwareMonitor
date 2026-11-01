@@ -1149,7 +1149,7 @@ final class AppModel: ObservableObject {
     // 颜色工具
     @Published var colorHex = "#4F8CFF"
 
-    // MARK: - 专注模块（26DF10Q1beta.0.0.7 新增）
+    // MARK: - 专注模块（26DF10Q1beta1.0.7 新增）
 
     /// 精确番茄钟引擎（单调时钟锚点法，睡眠唤醒后自动重校准）
     let focusEngine = FocusEngine()

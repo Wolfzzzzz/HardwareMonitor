@@ -155,6 +155,19 @@ struct MenuBarView: View {
                 Label("退出", systemImage: "power")
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            Divider().padding(.vertical, 4)
+
+            HStack {
+                Text("版本")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(AppVersion.full)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 4)
         }
         .buttonStyle(.plain)
         .padding(.vertical, 2)

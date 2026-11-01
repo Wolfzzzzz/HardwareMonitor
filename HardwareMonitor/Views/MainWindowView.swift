@@ -127,6 +127,12 @@ struct MainWindowView: View {
             Text("刷新 \(Int(model.refreshInterval))s")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text(AppVersion.full)
+                .font(.caption2.monospacedDigit())
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.primary.opacity(0.08)))
+                .foregroundStyle(.secondary)
         }
     }
 

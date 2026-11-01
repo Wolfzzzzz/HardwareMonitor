@@ -2,7 +2,7 @@
 //  FocusFullScreen.swift
 //  HardwareMonitor
 //
-//  版本 26DF10Q1beta.0.0.7 —— 专注模块：沉浸式全屏专注窗口
+//  版本 26DF10Q1beta1.0.7 —— 专注模块：沉浸式全屏专注窗口
 //  用无边框 NSWindow 覆盖主屏，层级高于菜单栏；Esc 退出用 NSEvent 本地监听（最保守写法）。
 //
 
