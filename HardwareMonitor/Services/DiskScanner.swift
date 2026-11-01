@@ -1,6 +1,6 @@
 import Foundation
 
-/// 磁盘大文件扫描（Premium 专属）
+/// 磁盘大文件扫描（全部免费）
 /// 后台扫描主目录，收集体积最大的文件（≥50MB）
 final class DiskScanner {
     struct BigFile: Identifiable {

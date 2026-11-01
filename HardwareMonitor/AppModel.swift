@@ -46,17 +46,7 @@ final class AppModel: ObservableObject {
     @Published var pendingLanguage: String = "system"
     @Published var showLanguageConfirm = false
 
-    // MARK: - 专业功能（Pro）
-
-    /// 当前版本档位（激活码激活，持久化）：free / deluxe / premium
-    @Published var proTier: ProTier = .free
-    /// 激活提示信息
-    @Published var licenseMessage: String?
-    /// 激活码输入框内容
-    @Published var licenseInput = ""
-
-    /// 是否 Deluxe 及以上
-    var isDeluxe: Bool { proTier == .deluxe || proTier == .premium }
+    // 全部功能免费开放：已移除 Pro / Premium / Deluxe 付费分层与激活码
 
     // MARK: - Premium 分析状态
 
@@ -204,28 +194,9 @@ final class AppModel: ObservableObject {
             }
         })
     }
-    /// 是否 Premium Deluxe
-    var isPremium: Bool { proTier == .premium }
+    // 全部功能免费开放，已无 Premium 档位
 
-    /// 退出激活（回到 Standard 免费版）
-    func deactivatePro() {
-        proTier = .free
-        UserDefaults.standard.set("free", forKey: "proTier")
-        licenseMessage = nil
-    }
-
-    /// 尝试用激活码解锁（按激活码档位激活对应版本）
-    func tryActivate(_ code: String) -> Bool {
-        let tier = License.tier(of: code)
-        guard tier != .free else {
-            licenseMessage = "激活码无效，请检查后重试"
-            return false
-        }
-        proTier = tier
-        UserDefaults.standard.set(tier.rawValue, forKey: "proTier")
-        licenseMessage = nil
-        return true
-    }
+    // 已移除：付费激活 / 退出激活逻辑（全部功能免费）
 
     /// 主题皮肤 id（aurora/ocean/forest/magma/sakura/graphite）
     @Published var themeID: String = "aurora" { didSet { UserDefaults.standard.set(themeID, forKey: "themeID") } }
@@ -278,12 +249,12 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// 自定义强调色（Premium Deluxe 专属，hex 持久化）
+    /// 自定义强调色（hex 持久化，全部用户可用）
     @Published var customAccentHex: String = "FF9F43" { didSet { UserDefaults.standard.set(customAccentHex, forKey: "customAccentHex") } }
 
     /// 当前强调色（主题；custom 主题用自定义色）
     var accentColor: Color {
-        if themeID == "custom", isPremium {
+        if themeID == "custom" {
             return colorFromHex(customAccentHex)
         }
         return currentTheme.accent
@@ -300,7 +271,7 @@ final class AppModel: ObservableObject {
         )
     }
 
-    // MARK: - 系统信息（Premium）
+    // MARK: - 系统信息
 
     /// CPU 型号字符串
     var cpuBrand: String {
@@ -689,7 +660,7 @@ final class AppModel: ObservableObject {
         pendingLanguage = appLanguage
         themeID = d.string(forKey: "themeID") ?? "aurora"
         appearanceID = d.string(forKey: "appearanceID") ?? "system"
-        proTier = ProTier(rawValue: d.string(forKey: "proTier") ?? "") ?? .free
+        // 已移除付费档位读取（全部免费）
         todayTrafficInMB = d.double(forKey: "todayTrafficInMB")
         todayTrafficOutMB = d.double(forKey: "todayTrafficOutMB")
         trafficDay = d.string(forKey: "trafficDay") ?? ""
@@ -792,13 +763,9 @@ final class AppModel: ObservableObject {
     @Published var menuBarText = "-- · --%"
     @Published var menuBarColor: Color = .primary
 
-    /// 历史采样点上限（按版本）
+    /// 历史采样点上限（全部免费，统一 1200 点）
     var historyLimit: Int {
-        switch proTier {
-        case .free: return 300
-        case .deluxe: return 600
-        case .premium: return 1200
-        }
+        return 1200
     }
 
     private func appendHistory(_ snap: SystemSnapshot) {

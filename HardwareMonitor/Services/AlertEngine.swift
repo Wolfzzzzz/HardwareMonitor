@@ -8,7 +8,7 @@ final class AlertEngine {
     private var lastFired: [String: Date] = [:]
     private let cooldown: TimeInterval = 60
 
-    /// 告警历史（Premium 查看）
+    /// 告警历史（全部免费查看）
     struct AlertRecord: Identifiable {
         let id = UUID()
         let key: String

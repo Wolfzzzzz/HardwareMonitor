@@ -18,7 +18,8 @@ struct ToolsView: View {
         ("paintpalette", "颜色工具"),
         ("timer", "番茄钟"),
         ("note.text", "便签"),
-        ("folder", "常用文件夹")
+        ("folder", "常用文件夹"),
+        ("gearshape.2", "高级功能")
     ]
 
     var body: some View {
@@ -75,6 +76,8 @@ struct ToolsView: View {
         case 6: ColorToolsView()
         case 7: PomodoroView()
         case 8: NoteView()
+        case 9: FolderView()
+        case 10: AdvancedToolsView()
         default: FolderView()
         }
     }
@@ -749,5 +752,390 @@ struct FolderView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - 10 高级功能（原 Pro / Premium 高端功能，26DF10Q1beta.0.0.3 起全部免费开放）
+
+struct AdvancedToolsView: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var launchItems: [LaunchItem] = []
+    @State private var showBenchmark = false
+    @State private var checkingDisk = false
+    @State private var refreshingWiFi = false
+
+    private let cores = ProcessInfo.processInfo.activeProcessorCount
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ToolSectionTitle(title: "高级功能（全部免费）", icon: "gearshape.2")
+            Text("以下工具原属 Pro / Premium 专属，自 26DF10Q1beta.0.0.3 起全部免费开放。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            pressureCard
+            remoteCard
+            hotkeyCard
+            launchCard
+            bigFileCard
+            diskCard
+            wifiCard
+            benchmarkCard
+            speedCard
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onAppear { launchItems = LaunchItems.scan() }
+        .onChange(of: model.diskHealthCheckedAt) { _, _ in checkingDisk = false }
+        .onChange(of: model.wifiUpdatedAt) { _, _ in refreshingWiFi = false }
+        .sheet(isPresented: $showBenchmark) {
+            BenchmarkView()
+        }
+    }
+
+    // MARK: 卡片容器
+
+    private func card<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(.semibold))
+            content()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
+    }
+
+    // MARK: CPU 压力测试
+
+    private var pressureCard: some View {
+        card(title: "CPU 压力测试", icon: "cpu") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label(model.pressureRunning ? "运行中" : "已停止",
+                          systemImage: model.pressureRunning ? "checkmark.circle.fill" : "stop.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(model.pressureRunning ? .orange : .secondary)
+                    Spacer()
+                    Button(model.pressureRunning ? "停止" : "开始压测") { model.togglePressure() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .tint(model.pressureRunning ? .red : model.accentColor)
+                }
+                HStack(spacing: 8) {
+                    Text("线程数").font(.caption).foregroundStyle(.secondary)
+                    Slider(value: $model.pressureThreads, in: 1...Double(cores * 2), step: 1)
+                        .frame(width: 170)
+                        .disabled(model.pressureRunning)
+                    Text("\(Int(model.pressureThreads))").font(.caption.monospacedDigit()).frame(width: 26)
+                }
+                Text("模拟满载负载，用于散热 / 稳定性测试。低优先级运行，不影响系统响应；建议短时运行。")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: 局域网远程监控
+
+    private var remoteCard: some View {
+        card(title: "局域网远程监控", icon: "network") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label(model.remoteRunning ? "服务运行中" : "已停止",
+                          systemImage: model.remoteRunning ? "dot.radiowaves.left.and.right" : "network.slash")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(model.remoteRunning ? .green : .secondary)
+                    Spacer()
+                    Button(model.remoteRunning ? "停止" : "启动服务") { model.toggleRemote() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .tint(model.remoteRunning ? .red : model.accentColor)
+                }
+                HStack(spacing: 8) {
+                    Text("端口").font(.caption).foregroundStyle(.secondary)
+                    TextField("", value: $model.remotePort, format: .number)
+                        .textFieldStyle(.roundedBorder).frame(width: 90)
+                        .disabled(model.remoteRunning)
+                    Spacer()
+                }
+                if model.remoteRunning {
+                    let url = "http://\(SysInfo.localIP):\(model.remotePort)"
+                    HStack(spacing: 8) {
+                        Text("访问地址").font(.caption).foregroundStyle(.secondary)
+                        Text(url).font(.caption.monospaced()).textSelection(.enabled)
+                        Button("复制") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(url, forType: .string)
+                        }
+                        .buttonStyle(.bordered).controlSize(.small)
+                    }
+                    Text("手机或同局域网电脑的浏览器打开即可实时查看（含 TOP 进程与趋势图）。")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: 全局快捷键
+
+    private var hotkeyCard: some View {
+        card(title: "全局快捷键", icon: "command") {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle("启用全局快捷键", isOn: $model.hotkeysEnabled)
+                Text("组合键：⌃⌘⌥ + 字母。首次使用需在「系统设置 → 隐私与安全性 → 辅助功能」中允许本 App。")
+                    .font(.caption2).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(HotkeyAction.allCases) { a in
+                        HStack(spacing: 8) {
+                            Text(a.key).font(.caption.monospaced())
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.08)))
+                            Text(actionName(a)).font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func actionName(_ a: HotkeyAction) -> String {
+        switch a {
+        case .togglePanel: return "切换主面板"
+        case .lockScreen: return "锁屏"
+        case .sleepDisplay: return "显示器休眠"
+        case .clearClipboard: return "清空剪贴板"
+        }
+    }
+
+    // MARK: 启动项管理（只读）
+
+    private var launchCard: some View {
+        card(title: "启动项管理（只读）", icon: "play.circle") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("共 \(launchItems.count) 项")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("刷新") { launchItems = LaunchItems.scan() }
+                        .buttonStyle(.bordered).controlSize(.small)
+                    Button("打开文件夹") { LaunchItems.openUserFolder() }
+                        .buttonStyle(.bordered).controlSize(.small)
+                }
+                if launchItems.isEmpty {
+                    Text("未发现启动项 plist。").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    ForEach(launchItems) { item in
+                        HStack(spacing: 8) {
+                            Text(item.user ? "用户" : "系统")
+                                .font(.caption2)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Capsule().fill(item.user ? Color.blue.opacity(0.15) : Color.purple.opacity(0.15)))
+                                .foregroundStyle(item.user ? .blue : .purple)
+                            Text(item.name).font(.caption).lineLimit(1).truncationMode(.middle)
+                            Spacer()
+                        }
+                    }
+                }
+                Text("仅展示，不修改任何启动项。").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: 大文件扫描
+
+    private var bigFileCard: some View {
+        card(title: "大文件扫描（≥50MB）", icon: "doc.zoom.in") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Button(model.scanningDisk ? "扫描中…" : "扫描主目录") { model.scanBigFiles() }
+                        .buttonStyle(.borderedProminent).controlSize(.small)
+                        .tint(model.accentColor)
+                        .disabled(model.scanningDisk)
+                    if model.scanningDisk { ProgressView().scaleEffect(0.6) }
+                    Spacer()
+                }
+                if model.bigFiles.isEmpty {
+                    Text(model.scanningDisk ? "正在扫描…" : "尚未扫描。点击上方按钮扫描主目录下的大文件（排除 Library / node_modules / 废纸篓）。")
+                        .font(.caption2).foregroundStyle(.secondary)
+                } else {
+                    ForEach(model.bigFiles) { f in
+                        HStack(spacing: 8) {
+                            Text(formattedBytes(f.size)).font(.caption.monospacedDigit())
+                                .frame(width: 96, alignment: .trailing)
+                                .foregroundStyle(.secondary)
+                            Text(f.name).font(.caption).lineLimit(1).truncationMode(.middle)
+                            Spacer()
+                        }
+                    }
+                    Text("共列出 \(model.bigFiles.count) 个最大文件。").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: 磁盘健康
+
+    private var diskCard: some View {
+        card(title: "磁盘健康（S.M.A.R.T）", icon: "internaldrive") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Button(model.diskHealth == nil ? "检测" : "重新检测") {
+                        checkingDisk = true
+                        model.checkDiskHealth()
+                    }
+                    .buttonStyle(.borderedProminent).controlSize(.small)
+                    .tint(model.accentColor)
+                    .disabled(checkingDisk)
+                    if checkingDisk { ProgressView().scaleEffect(0.6) }
+                    Spacer()
+                }
+                if let h = model.diskHealth {
+                    gridRow("SMART 状态", h.smartStatus, tint: h.isFailing ? .red : .green)
+                    gridRow("型号", h.model)
+                    gridRow("容量", h.capacity)
+                    gridRow("介质类型", h.mediaType)
+                    if let p = h.powerOnHours { gridRow("通电时长", "\(p) 小时") }
+                    if let r = h.reallocatedSectors { gridRow("重映射扇区", "\(r)") }
+                    if let t = h.rawTemp { gridRow("温度", "\(t) °C") }
+                    if let at = model.diskHealthCheckedAt {
+                        Text("检测于 " + timeStr(at)).font(.caption2).foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text(checkingDisk ? "检测中…" : "尚未检测。")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: WiFi 详情
+
+    private var wifiCard: some View {
+        card(title: "WiFi 详情", icon: "wifi") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Button(model.wifiInfo == nil ? "获取" : "刷新") {
+                        refreshingWiFi = true
+                        model.refreshWiFiInfo()
+                    }
+                    .buttonStyle(.borderedProminent).controlSize(.small)
+                    .tint(model.accentColor)
+                    .disabled(refreshingWiFi)
+                    if refreshingWiFi { ProgressView().scaleEffect(0.6) }
+                    Spacer()
+                }
+                if let w = model.wifiInfo {
+                    gridRow("SSID", w.ssid ?? "—")
+                    if let r = w.rssi { gridRow("信号强度", "\(r) dBm") }
+                    if let n = w.noise { gridRow("噪声", "\(n) dBm") }
+                    if let c = w.channel { gridRow("信道", "\(c)") }
+                    if let s = w.linkSpeedMbps { gridRow("连接速率", String(format: "%.0f Mbps", s)) }
+                    gridRow("IP 地址", w.ip ?? "—")
+                    gridRow("网关", w.gateway ?? "—")
+                    gridRow("DNS", w.dns.isEmpty ? "—" : w.dns.joined(separator: ", "))
+                } else {
+                    Text(refreshingWiFi ? "获取中…" : "尚未获取。")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: CPU 性能跑分
+
+    private var benchmarkCard: some View {
+        card(title: "CPU 性能跑分", icon: "gauge.high") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Button("开始跑分") { showBenchmark = true }
+                        .buttonStyle(.borderedProminent).controlSize(.small)
+                        .tint(model.accentColor)
+                    Spacer()
+                }
+                if let r = model.benchmarkResult {
+                    HStack(spacing: 20) {
+                        VStack(alignment: .leading) {
+                            Text("单核").font(.caption2).foregroundStyle(.secondary)
+                            Text("\(r.singleScore)").font(.title3.monospacedDigit().weight(.semibold))
+                        }
+                        VStack(alignment: .leading) {
+                            Text("多核").font(.caption2).foregroundStyle(.secondary)
+                            Text("\(r.multiScore)").font(.title3.monospacedDigit().weight(.semibold))
+                                .foregroundStyle(.orange)
+                        }
+                        if model.benchmarkRunning {
+                            ProgressView().scaleEffect(0.7).padding(.leading, 6)
+                        }
+                    }
+                    .padding(.top, 2)
+                } else {
+                    Text("Geekbench 风格测试：单核 + 多核，4 类负载。点击「开始跑分」全屏运行。")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: 网络测速
+
+    private var speedCard: some View {
+        card(title: "网络测速", icon: "speedometer") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Button(model.speedTesting ? "测速中…" : "开始测速") { model.runSpeedTest() }
+                        .buttonStyle(.borderedProminent).controlSize(.small)
+                        .tint(model.accentColor)
+                        .disabled(model.speedTesting)
+                    if model.speedTesting {
+                        ProgressView(value: model.speedProgress).frame(width: 120)
+                    }
+                    Spacer()
+                }
+                if model.speedTesting {
+                    Text(model.speedStageText).font(.caption2).foregroundStyle(.secondary)
+                }
+                if let s = model.speedTestResult {
+                    HStack(spacing: 16) {
+                        statBlock("延迟", s.pingMs.map { String(format: "%.0f ms", $0) } ?? "—")
+                        statBlock("下载", s.downloadMbps.map { String(format: "%.1f Mbps", $0) } ?? "—")
+                        statBlock("上传", s.uploadMbps.map { String(format: "%.1f Mbps", $0) } ?? "—")
+                    }
+                    if let n = s.note { Text(n).font(.caption2).foregroundStyle(.red) }
+                } else if !model.speedTesting {
+                    Text("使用 Cloudflare 节点测延迟 / 下载 / 上传（真实传输，非模拟）。")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: 辅助
+
+    private func gridRow(_ k: String, _ v: String, tint: Color? = nil) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(k).font(.caption).foregroundStyle(.secondary).frame(width: 84, alignment: .leading)
+            Text(v).font(.caption).foregroundStyle(tint ?? .primary).textSelection(.enabled)
+            Spacer()
+        }
+    }
+
+    private func statBlock(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.headline.monospacedDigit())
+        }
+    }
+
+    private func formattedBytes(_ bytes: Int64) -> String {
+        let f = ByteCountFormatter()
+        f.allowedUnits = [.useGB, .useMB, .useKB]
+        f.countStyle = .file
+        return f.string(fromByteCount: bytes)
+    }
+
+    private func timeStr(_ d: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; return f.string(from: d)
     }
 }

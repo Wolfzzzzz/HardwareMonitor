@@ -13,8 +13,6 @@ struct MainWindowView: View {
                 Text("监控").tag(0)
                 Text("剪贴板").tag(1)
                 Text("工具").tag(2)
-                Text("专业").tag(3)
-                Text("高级").tag(4)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -26,14 +24,8 @@ struct MainWindowView: View {
             } else if model.mainTab == 1 {
                 ClipboardView()
                     .environmentObject(model)
-            } else if model.mainTab == 2 {
-                ToolsView()
-                    .environmentObject(model)
-            } else if model.mainTab == 3 {
-                ProView()
-                    .environmentObject(model)
             } else {
-                PremiumView()
+                ToolsView()
                     .environmentObject(model)
             }
         }
@@ -98,10 +90,10 @@ struct MainWindowView: View {
 
     // MARK: 概览卡片
 
-    /// 温度卡副标题（GPU + 风扇，风扇为 Deluxe 功能）
+    /// 温度卡副标题（GPU + 风扇）
     private var tempSubText: String {
         var s = model.snapshot.gpuTempC.map { "GPU " + Fmt.temp($0) } ?? "GPU 该机型不提供"
-        if model.isDeluxe, let fan = model.snapshot.smcFans.first {
+        if let fan = model.snapshot.smcFans.first {
             s += " · 风扇 \(Int(fan.1)) RPM"
         }
         return s

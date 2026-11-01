@@ -109,12 +109,21 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("版本") {
-                    Text("1.0.0").foregroundStyle(.secondary)
+                    Text("26DF10Q1beta.0.0.3").foregroundStyle(.secondary)
                 }
             } header: {
                 Text("关于")
             } footer: {
                 Text("本应用仅读取硬件数据，不进行任何写入或调节。\n温度与风扇依赖系统 SMC 接口：当前 macOS 27 beta 未开放时自动降级为电池温度参考。")
+            }
+
+            Section {
+                Link("通过 GitHub 提交问题 / 建议", destination: URL(string: "https://github.com/Wolfzzzzz/HardwareMonitor/issues")!)
+                Link("发送邮件反馈", destination: URL(string: "mailto:zhang429500@icloud.com")!)
+            } header: {
+                Text("反馈与支持")
+            } footer: {
+                Text("使用中遇到问题或有功能建议，欢迎通过上述渠道联系开发者。")
             }
 
             Section {
