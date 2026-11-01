@@ -24,18 +24,22 @@ struct MainWindowView: View {
             .padding(.vertical, 10)
             .tourAnchor("tabs")
 
-            if model.mainTab == 0 {
-                monitorContent
-            } else if model.mainTab == 1 {
-                ClipboardView()
-                    .environmentObject(model)
-            } else if model.mainTab == 2 {
-                ToolsView()
-                    .environmentObject(model)
-            } else if model.mainTab == 3 {
-                FocusView()
-                    .environmentObject(model)
+            Group {
+                if model.mainTab == 0 {
+                    monitorContent
+                } else if model.mainTab == 1 {
+                    ClipboardView()
+                        .environmentObject(model)
+                } else if model.mainTab == 2 {
+                    ToolsView()
+                        .environmentObject(model)
+                } else if model.mainTab == 3 {
+                    FocusView()
+                        .environmentObject(model)
+                }
             }
+            // 统一占满剩余空间并贴顶：避免不同标签页内容高度不同时，整块内容被窗口垂直居中而「往下沉」
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .onAppear {
             model.setMainWindowVisible(true)
@@ -54,7 +58,7 @@ struct MainWindowView: View {
         }
         .tint(model.accentColor)
         .preferredColorScheme(model.preferredColorScheme)
-        .frame(minWidth: 780, minHeight: 560)
+        .frame(minWidth: 780, minHeight: 560, alignment: .top)
         .background(
             LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
                 .overlay(Color.black.opacity(0.25))

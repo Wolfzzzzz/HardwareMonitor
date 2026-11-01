@@ -22,19 +22,20 @@ struct ClipboardView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            if model.clipboardItems.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "doc.on.clipboard")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.secondary.opacity(0.5))
-                    Text("暂无记录，复制点什么试试")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 60)
-            } else {
-                ScrollView {
+            // 空态与列表共用同一个 ScrollView，切换标签页时高度不会跳变
+            ScrollView {
+                if model.clipboardItems.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "doc.on.clipboard")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.secondary.opacity(0.5))
+                        Text("暂无记录，复制点什么试试")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 60)
+                } else {
                     LazyVStack(spacing: 6) {
                         ForEach(model.clipboardItems) { item in
                             row(item)
@@ -42,8 +43,10 @@ struct ClipboardView: View {
                     }
                 }
             }
+            .frame(maxHeight: .infinity)
         }
         .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func row(_ item: ClipboardItem) -> some View {
