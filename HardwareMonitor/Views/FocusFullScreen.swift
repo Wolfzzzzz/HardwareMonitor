@@ -119,6 +119,9 @@ struct FocusFullScreenView: View {
             ZStack {
                 breathingBackground
 
+                // 自定义背景照片 + 自动黑色蒙版（未设置时透明，保持原呼吸氛围）
+                FocusBackgroundLayer(background: model.focusBackground)
+
                 VStack(spacing: 22) {
                     Text(engine.phaseLabel)
                         .font(.system(size: 14, weight: .medium))

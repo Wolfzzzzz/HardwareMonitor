@@ -1157,6 +1157,8 @@ final class AppModel: ObservableObject {
     let focusNoise = NoiseMonitor()
     /// 番茄钟结束提示音（内置音 / 自定义音频文件 + 独立音量）
     let focusSound = FocusSoundPlayer()
+    /// 专注界面背景照片（自动叠加可调黑色蒙版，保证文字可读）
+    let focusBackground = FocusBackground()
     /// 专注全屏窗口控制器
     private let focusFullScreenController = FocusFullScreenController()
 

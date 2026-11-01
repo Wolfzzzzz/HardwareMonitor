@@ -46,6 +46,7 @@ struct SmokeTestDriver: View {
                 guard ProcessInfo.processInfo.environment["HWMON_SMOKE"] == "1" else { return }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     openWindow(id: "main")
+                    print("HWMON_SMOKE bg enabled=\(model.focusBackground.enabled) hasImage=\(model.focusBackground.hasImage) overlay=\(String(format: "%.2f", model.focusBackground.overlayOpacity)) file=\(model.focusBackground.statusText)")
                     var delay = 1.8
                     for tab in 0...3 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {

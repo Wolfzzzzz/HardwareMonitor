@@ -180,6 +180,40 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("启用背景照片", isOn: Binding(
+                    get: { model.focusBackground.enabled },
+                    set: { model.focusBackground.enabled = $0 }
+                ))
+                HStack(spacing: 8) {
+                    Text(model.focusBackground.statusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                    Button("选择照片…") { model.focusBackground.importImage() }
+                        .controlSize(.small)
+                    if model.focusBackground.hasImage {
+                        Button("移除") { model.focusBackground.removeImage() }
+                            .controlSize(.small)
+                    }
+                }
+                HStack(spacing: 10) {
+                    Text("蒙版强度").font(.caption).foregroundStyle(.secondary)
+                    Slider(value: Binding(
+                        get: { model.focusBackground.overlayOpacity },
+                        set: { model.focusBackground.overlayOpacity = $0 }
+                    ), in: 0.25...0.9)
+                    Text("\(Int(model.focusBackground.overlayOpacity * 100))%")
+                        .font(.caption.monospacedDigit())
+                        .frame(width: 40, alignment: .trailing)
+                }
+            } header: {
+                Text("专注界面背景")
+            } footer: {
+                Text("照片会复制到应用支持目录，原始文件不会被改动。照片上自动叠加黑色蒙版（最低 25%），保证专注页与全屏专注的文字清晰。")
+            }
+
+            Section {
                 Button("重新播放新手引导") {
                     UserDefaults.standard.set(false, forKey: "onboardingCompletedV1")
                     NotificationCenter.default.post(name: .restartOnboardingTour, object: nil)

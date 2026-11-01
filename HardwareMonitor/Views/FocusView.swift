@@ -14,28 +14,37 @@ struct FocusView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    FocusClockCard(engine: model.focusEngine)
-                        .id("focus.clock")
-                    FocusTimerCard(engine: model.focusEngine)
-                        .id("focus.timer")
-                    FocusNoiseCard(noise: model.focusNoise)
-                        .id("focus.noise")
-                    FocusSoundCard(sound: model.focusSound)
-                        .id("focus.sound")
-                    FocusStatsCard(engine: model.focusEngine)
+        ZStack {
+            // 自定义背景照片 + 自动黑色蒙版（未设置时是透明层，不影响现有外观）
+            FocusBackgroundLayer(background: model.focusBackground)
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        FocusClockCard(engine: model.focusEngine)
+                            .id("focus.clock")
+                        FocusTimerCard(engine: model.focusEngine)
+                            .id("focus.timer")
+                        FocusNoiseCard(noise: model.focusNoise)
+                            .id("focus.noise")
+                        FocusSoundCard(sound: model.focusSound)
+                            .id("focus.sound")
+                        FocusBackgroundCard(background: model.focusBackground)
+                            .tourAnchor("focus.background")
+                            .id("focus.background")
+                        FocusStatsCard(engine: model.focusEngine)
+                    }
+                    .padding(16)
                 }
-                .padding(16)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: OnboardingController.scrollNotification)) { note in
-                guard let id = note.object as? String else { return }
-                withAnimation(.easeInOut(duration: 0.35)) {
-                    proxy.scrollTo(id, anchor: .center)
+                .onReceive(NotificationCenter.default.publisher(for: OnboardingController.scrollNotification)) { note in
+                    guard let id = note.object as? String else { return }
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: model.focusBackground.enabled)
     }
 }
 
@@ -668,6 +677,89 @@ private struct FocusStatsCard: View {
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.primary.opacity(0.05))
+        )
+    }
+}
+
+// MARK: - 背景照片卡
+
+/// 专注界面背景照片设置：选图 / 启用 / 蒙版强度
+private struct FocusBackgroundCard: View {
+    @ObservedObject var background: FocusBackground
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            FocusCardHeader(icon: "photo", title: "背景照片")
+
+            HStack(alignment: .top, spacing: 12) {
+                thumbnail
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("选一张照片当专注界面背景。照片上会自动盖一层黑色蒙版，照片看得见，字也看得清。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 8) {
+                        Button("选择照片…") { background.importImage() }
+                            .controlSize(.small)
+                        if background.hasImage {
+                            Button("移除") { background.removeImage() }
+                                .controlSize(.small)
+                        }
+                        Text(background.statusText)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+
+            Toggle("启用背景照片", isOn: $background.enabled)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+            HStack(spacing: 10) {
+                Text("蒙版强度")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: $background.overlayOpacity, in: 0.25...0.9)
+                    .disabled(!background.enabled || !background.hasImage)
+                Text("\(Int(background.overlayOpacity * 100))%")
+                    .font(.caption.monospacedDigit())
+                    .frame(width: 40, alignment: .trailing)
+            }
+
+            Text("蒙版越深字越清晰，越浅照片越明显（最低 25%，避免亮照片上白字看不清）")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassBackground(cornerRadius: 14)
+    }
+
+    private var thumbnail: some View {
+        Group {
+            if let img = background.image {
+                Image(nsImage: img)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    Color.primary.opacity(0.06)
+                    Image(systemName: "photo.badge.plus")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(width: 132, height: 74)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.12))
         )
     }
 }

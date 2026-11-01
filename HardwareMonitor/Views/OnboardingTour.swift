@@ -376,15 +376,20 @@ final class OnboardingController: ObservableObject {
                      detail: "二维码、单位换算、编码工具、颜色工具、便签、常用文件夹、高级功能都在这里。",
                      tab: 2, toolTab: nil, anchor: "tools.sidebar"),
 
+            TourStep(id: "focus.clock",
+                     title: "精确时钟",
+                     detail: "毫秒级显示，基于系统校准时间 + 单调时钟，睡眠唤醒后也不会跑偏。",
+                     tab: 3, toolTab: nil, anchor: "focus.clock"),
+
             TourStep(id: "focus",
                      title: "番茄钟",
                      detail: "圆环倒计时，可调专注时长、短休长休、自动开始下一轮。",
                      tab: 3, toolTab: nil, anchor: "focus.timer"),
 
-            TourStep(id: "focus.clock",
-                     title: "精确时钟",
-                     detail: "毫秒级显示，基于系统校准时间 + 单调时钟，睡眠唤醒后也不会跑偏。",
-                     tab: 3, toolTab: nil, anchor: "focus.clock"),
+            TourStep(id: "focus.fullscreen",
+                     title: "专注全屏",
+                     detail: "一键进入沉浸式全屏，只剩计时器和进度环，Esc 退出。",
+                     tab: 3, toolTab: nil, anchor: "focus.fullscreen"),
 
             TourStep(id: "focus.noise",
                      title: "麦克风噪音检测",
@@ -396,10 +401,10 @@ final class OnboardingController: ObservableObject {
                      detail: "内置十几种提示音，也可以用自己的音频文件，音量能单独调。",
                      tab: 3, toolTab: nil, anchor: "focus.sound"),
 
-            TourStep(id: "focus.fullscreen",
-                     title: "专注全屏",
-                     detail: "一键进入沉浸式全屏，只剩计时器和进度环，Esc 退出。",
-                     tab: 3, toolTab: nil, anchor: "focus.fullscreen"),
+            TourStep(id: "focus.background",
+                     title: "背景照片",
+                     detail: "挑一张照片当专注背景，系统会自动盖一层黑色蒙版——照片看得见，字也看得清，蒙版深浅可调。",
+                     tab: 3, toolTab: nil, anchor: "focus.background"),
 
             TourStep(id: "done",
                      title: "开始使用",

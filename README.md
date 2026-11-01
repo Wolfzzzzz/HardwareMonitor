@@ -1,6 +1,6 @@
 # HardwareMonitor
 
-> 版本 **26DF10Q1beta1.0.8** · 全部功能免费，无任何付费墙。
+> 版本 **26DF10Q1beta1.0.9** · 全部功能免费，无任何付费墙。
 
 > [English](README_EN.md)
 
