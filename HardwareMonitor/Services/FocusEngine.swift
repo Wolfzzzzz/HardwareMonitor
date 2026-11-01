@@ -126,6 +126,8 @@ final class FocusEngine: ObservableObject {
     private let writeDelta: Double = 0.05
     /// 自动休息关闭时，暂存「即将进入的休息分钟数」
     private var pendingBreakMinutes: Int?
+    /// 下一拍才应用的休息阶段：保证 onFinish 回调（上抛到主线程队列）读取 total 时仍是本段专注时长
+    private var pendingBreakStart: (minutes: Int, auto: Bool)?
     /// 跨天检测计数
     private var tickCount: Int = 0
     private var lastDayString: String = ""
@@ -164,9 +166,12 @@ final class FocusEngine: ObservableObject {
         case .focusing, .breaking:
             break
         case .idle:
+            if pendingBreakStart != nil {
+                applyPendingBreakStart()
+            }
             if let pending = pendingBreakMinutes {
                 beginBreak(minutes: pending)
-            } else {
+            } else if phase == .idle {
                 beginFocus()
             }
         }
@@ -205,6 +210,7 @@ final class FocusEngine: ObservableObject {
     /// 重置：回到专注待开始状态（不计入统计）
     func reset() {
         pendingBreakMinutes = nil
+        pendingBreakStart = nil
         roundIndex = 0
         let seconds = Double(focusMinutes) * 60
         total = seconds
@@ -215,13 +221,15 @@ final class FocusEngine: ObservableObject {
 
     /// 跳过当前阶段（不计入统计、不播提示音）
     func skip() {
+        pendingBreakStart = nil
         switch phase {
         case .focusing, .paused:
             phase = .idle
             scheduleBreakAfterFocus()
         case .breaking, .breakPaused:
             phase = .idle
-            if roundIndex >= roundsBeforeLongBreak { roundIndex = 0 }
+            let rounds = max(1, roundsBeforeLongBreak)
+            if roundIndex > 0 && roundIndex % rounds == 0 { roundIndex = 0 }
             if autoStartNext {
                 beginFocus()
             } else {
@@ -300,8 +308,14 @@ final class FocusEngine: ObservableObject {
             saveStats()
 
             phase = .idle
+            // 注意：此处 total 仍是本段专注时长，回调方（通知文案）需要读到它
             onFinish?(.focusing)
-            scheduleBreakAfterFocus()
+
+            let rounds = max(1, roundsBeforeLongBreak)
+            let useLong = roundIndex > 0 && roundIndex % rounds == 0
+            let minutes = useLong ? longBreakMinutes : shortBreakMinutes
+            // 休息阶段延后到下一拍应用，避免立刻改写 total
+            pendingBreakStart = (minutes: minutes, auto: autoStartBreak)
         } else if finished == .breaking {
             phase = .idle
             onFinish?(.breaking)
@@ -315,6 +329,23 @@ final class FocusEngine: ObservableObject {
             } else {
                 prepareIdleFocus()
             }
+        }
+    }
+
+    /// 应用上一段专注结束后排队的休息阶段
+    private func applyPendingBreakStart() {
+        guard let pending = pendingBreakStart else { return }
+        pendingBreakStart = nil
+
+        if pending.auto {
+            beginBreak(minutes: pending.minutes)
+        } else {
+            pendingBreakMinutes = pending.minutes
+            let seconds = Double(pending.minutes) * 60
+            total = seconds
+            remaining = seconds
+            anchor(remaining: seconds)
+            phase = .idle
         }
     }
 
@@ -357,6 +388,12 @@ final class FocusEngine: ObservableObject {
         tickCount += 1
         if tickCount % 200 == 0 {
             refreshDayIfNeeded()
+        }
+
+        // 上一段专注结束后排队中的休息阶段（延后一拍应用）
+        if pendingBreakStart != nil {
+            applyPendingBreakStart()
+            return
         }
 
         guard phase == .focusing || phase == .breaking else { return }
