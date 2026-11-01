@@ -9,3 +9,7 @@ xcuserdata/
 # Xcode
 DerivedData/
 *.xcworkspace/xcshareddata/swiftpm/
+
+# Release build output
+build-release/
+HardwareMonitor-*.zip
