@@ -73,22 +73,34 @@ struct MainWindowView: View {
 
     /// 监控页内容
     private var monitorContent: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                overviewGrid
-                    .tourAnchor("overview")
-                systemOverviewBar
-                Divider()
-                HStack(alignment: .top, spacing: 14) {
-                    trendsColumn
-                        .tourAnchor("trends")
-                    rightColumn
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    overviewGrid
+                        .tourAnchor("overview")
+                        .id("overview")
+                    systemOverviewBar
+                    Divider()
+                    HStack(alignment: .top, spacing: 14) {
+                        trendsColumn
+                            .tourAnchor("trends")
+                            .id("trends")
+                        rightColumn
+                            .id("temps")
+                    }
+                    Divider()
+                    processSection
+                        .tourAnchor("process")
+                        .id("process")
                 }
-                Divider()
-                processSection
-                    .tourAnchor("process")
+                .padding(18)
             }
-            .padding(18)
+            .onReceive(NotificationCenter.default.publisher(for: OnboardingController.scrollNotification)) { note in
+                guard let id = note.object as? String else { return }
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
         }
     }
 

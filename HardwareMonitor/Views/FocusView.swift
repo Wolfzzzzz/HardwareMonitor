@@ -14,15 +14,27 @@ struct FocusView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                FocusClockCard(engine: model.focusEngine)
-                FocusTimerCard(engine: model.focusEngine)
-                FocusNoiseCard(noise: model.focusNoise)
-                FocusSoundCard(sound: model.focusSound)
-                FocusStatsCard(engine: model.focusEngine)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    FocusClockCard(engine: model.focusEngine)
+                        .id("focus.clock")
+                    FocusTimerCard(engine: model.focusEngine)
+                        .id("focus.timer")
+                    FocusNoiseCard(noise: model.focusNoise)
+                        .id("focus.noise")
+                    FocusSoundCard(sound: model.focusSound)
+                        .id("focus.sound")
+                    FocusStatsCard(engine: model.focusEngine)
+                }
+                .padding(16)
             }
-            .padding(16)
+            .onReceive(NotificationCenter.default.publisher(for: OnboardingController.scrollNotification)) { note in
+                guard let id = note.object as? String else { return }
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
         }
     }
 }

@@ -118,6 +118,10 @@ final class OnboardingController: ObservableObject {
     /// 完成标记键（首启引导 V1）
     private static let completedKey = "onboardingCompletedV1"
 
+    /// 切步时广播：请滚动区域把该锚点滚进可视区（监控页 / 专注页的长列表）
+    /// object 为锚点 id 字符串
+    static let scrollNotification = Notification.Name("hwmon.tourScrollToAnchor")
+
     @Published private(set) var isActive: Bool = false
     @Published private(set) var index: Int = 0
     @Published private(set) var bubbleVisible: Bool = false
@@ -288,6 +292,9 @@ final class OnboardingController: ObservableObject {
 
             // 4) 等锚点坐标就绪（最长 0.9s）
             if let id = step.anchor {
+                // 4.0) 先把目标滚进可视区，避免气泡指向窗口外
+                NotificationCenter.default.post(name: OnboardingController.scrollNotification, object: id)
+
                 let deadline = Date().addingTimeInterval(0.9)
                 while self.anchors[id] == nil {
                     if Date() >= deadline { break }
@@ -296,8 +303,8 @@ final class OnboardingController: ObservableObject {
                 }
                 if Task.isCancelled { return }
 
-                // 5) 翻页缓冲：先让新页面渲染完，再出框（0.4s / 0.12s）
-                try? await Task.sleep(nanoseconds: tabChanged ? 400_000_000 : 120_000_000)
+                // 5) 翻页/滚动缓冲：先让新页面与滚动动画落定，再出框（0.52s / 0.18s）
+                try? await Task.sleep(nanoseconds: tabChanged ? 520_000_000 : 180_000_000)
                 if Task.isCancelled { return }
 
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
