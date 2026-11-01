@@ -3,21 +3,26 @@ import SwiftUI
 /// 主窗口界面（平时隐藏，菜单栏「打开主界面」显示；关闭即隐藏）
 struct MainWindowView: View {
     @EnvironmentObject private var model: AppModel
+    /// 漫游式引导（首次启动自动播放）
+    @StateObject private var tour = OnboardingController()
 
     var body: some View {
         VStack(spacing: 0) {
             header
                 .padding(.horizontal, 18)
                 .padding(.top, 14)
+                .tourAnchor("header")
             Picker("", selection: $model.mainTab) {
                 Text("监控").tag(0)
                 Text("剪贴板").tag(1)
                 Text("工具").tag(2)
+                Text("专注").tag(3)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
+            .tourAnchor("tabs")
 
             if model.mainTab == 0 {
                 monitorContent
@@ -27,16 +32,38 @@ struct MainWindowView: View {
             } else if model.mainTab == 2 {
                 ToolsView()
                     .environmentObject(model)
+            } else if model.mainTab == 3 {
+                FocusView()
+                    .environmentObject(model)
             }
         }
-        .onAppear { model.setMainWindowVisible(true) }
+        .onAppear {
+            model.setMainWindowVisible(true)
+            tour.bind(model)
+            // 首次启动：等窗口布局稳定后播放引导
+            if !tour.hasCompleted {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                    if !tour.hasCompleted { tour.start() }
+                }
+            }
+        }
         .onDisappear { model.setMainWindowVisible(false) }
+        .onReceive(NotificationCenter.default.publisher(for: .restartOnboardingTour)) { _ in
+            tour.bind(model)
+            tour.start()
+        }
         .tint(model.accentColor)
         .preferredColorScheme(model.preferredColorScheme)
         .frame(minWidth: 780, minHeight: 560)
         .background(
             LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
                 .overlay(Color.black.opacity(0.25))
+        )
+        .onPreferenceChange(TourAnchorKey.self) { tour.updateAnchors($0) }
+        .overlay(
+            OnboardingOverlay()
+                .environmentObject(tour)
+                .environmentObject(model)
         )
         .sheet(isPresented: $model.showBenchmarkSheet) {
             BenchmarkView()
@@ -49,14 +76,17 @@ struct MainWindowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 overviewGrid
+                    .tourAnchor("overview")
                 systemOverviewBar
                 Divider()
                 HStack(alignment: .top, spacing: 14) {
                     trendsColumn
+                        .tourAnchor("trends")
                     rightColumn
                 }
                 Divider()
                 processSection
+                    .tourAnchor("process")
             }
             .padding(18)
         }
@@ -191,6 +221,7 @@ struct MainWindowView: View {
     private var rightColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
             tempDetail
+                .tourAnchor("temps")
             DetailChartsView(snapshot: model.snapshot)
         }
         .frame(width: 360)

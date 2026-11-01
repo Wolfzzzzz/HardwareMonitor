@@ -121,6 +121,14 @@ struct MenuBarView: View {
             Divider().padding(.vertical, 4)
 
             Button {
+                model.mainTab = 3
+                openMainWindow()
+            } label: {
+                Label("专注 · \(model.focusEngine.remainingText)（\(model.focusEngine.phaseLabel)）",
+                      systemImage: "timer")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Button {
                 openMainWindow()
             } label: {
                 Label("打开主界面", systemImage: "macwindow.on.rectangle")

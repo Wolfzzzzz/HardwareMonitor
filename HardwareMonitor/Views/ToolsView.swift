@@ -62,6 +62,7 @@ struct ToolsView: View {
         .padding(8)
         .frame(width: 148)
         .background(Color.primary.opacity(0.03))
+        .tourAnchor("tools.sidebar")
     }
 
     @ViewBuilder
@@ -539,79 +540,52 @@ struct ColorToolsView: View {
     }
 }
 
-// MARK: - 7 番茄钟
+// MARK: - 7 番茄钟（26DF10Q1beta.0.0.7 起迁移到「专注」标签页）
 
 struct PomodoroView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             ToolSectionTitle(title: "番茄钟", icon: "timer")
-            HStack(alignment: .center, spacing: 18) {
-                CircleDial(minutes: model.pomoMinutes) { m in
-                    model.setPomodoroMinutes(m)
-                }
-                .disabled(model.pomoRunning)
-                .frame(width: 150, height: 150)
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("滑动圆盘调整时长")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        ForEach([15, 25, 45, 60], id: \.self) { m in
-                            Button("\(m) 分") { model.setPomodoroMinutes(m) }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .disabled(model.pomoRunning)
-                        }
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "timer")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("番茄钟已升级为「专注」模式")
+                            .font(.headline)
+                        Text("支持沉浸式全屏、毫秒级精确计时、麦克风噪音检测、自定义提示音与音量。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    HStack(spacing: 8) {
-                        TextField("", value: Binding(
-                            get: { Double(model.pomoMinutes) },
-                            set: { model.setPomodoroMinutes(Int($0)) }
-                        ), format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 76)
-                        .disabled(model.pomoRunning)
-                        Text("或输入分钟")
+                    Spacer()
+                }
+
+                HStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.focusEngine.remainingText)
+                            .font(.system(size: 30, weight: .bold, design: .rounded).monospacedDigit())
+                        Text(model.focusEngine.phaseLabel)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+                    Spacer()
+                    Button("前往专注页") { model.mainTab = 3 }
+                        .buttonStyle(.borderedProminent)
                 }
             }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassBackground(cornerRadius: 12)
 
-            Text(String(format: "%02d:%02d", model.pomoRemaining / 60, model.pomoRemaining % 60))
-                .font(.system(size: 52, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(model.pomoRunning ? .blue : .primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-
-            ProgressView(value: progress)
-                .tint(.blue)
-
-            HStack(spacing: 10) {
-                Button(model.pomoRunning ? "暂停" : "开始") {
-                    model.pomoRunning ? model.stopPomodoro() : model.startPomodoro()
-                }
-                .buttonStyle(.borderedProminent)
-                Button("重置") { model.resetPomodoro() }
-                    .buttonStyle(.bordered)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-
-            Text("结束后会发送系统通知。专注模式，加油！")
+            Text("提示：专注页按「进入专注全屏」即可全屏沉浸，Esc 退出。")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var progress: Double {
-        let total = Double(model.pomoMinutes * 60)
-        guard total > 0 else { return 0 }
-        return 1.0 - Double(model.pomoRemaining) / total
     }
 }
 
@@ -759,10 +733,9 @@ struct FolderView: View {
 
 struct AdvancedToolsView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var launchItems: [LaunchItem] = []
-    @State private var showBenchmark = false
-    @State private var checkingDisk = false
-    @State private var refreshingWiFi = false
+    // 注意：本工程所用工具链的 Swift 宏（@State/@Observable/@Bindable）不可用，
+    // 局部状态统一用 ObservableObject 包装。
+    @StateObject private var ui = AdvancedToolsUIState()
 
     private let cores = ProcessInfo.processInfo.activeProcessorCount
 
@@ -786,10 +759,10 @@ struct AdvancedToolsView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear { launchItems = LaunchItems.scan() }
-        .onChange(of: model.diskHealthCheckedAt) { _, _ in checkingDisk = false }
-        .onChange(of: model.wifiUpdatedAt) { _, _ in refreshingWiFi = false }
-        .sheet(isPresented: $showBenchmark) {
+        .onAppear { ui.launchItems = LaunchItems.scan() }
+        .onChange(of: model.diskHealthCheckedAt) { _, _ in ui.checkingDisk = false }
+        .onChange(of: model.wifiUpdatedAt) { _, _ in ui.refreshingWiFi = false }
+        .sheet(isPresented: $ui.showBenchmark) {
             BenchmarkView()
         }
     }
@@ -915,18 +888,18 @@ struct AdvancedToolsView: View {
         card(title: "启动项管理（只读）", icon: "play.circle") {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("共 \(launchItems.count) 项")
+                    Text("共 \(ui.launchItems.count) 项")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Button("刷新") { launchItems = LaunchItems.scan() }
+                    Button("刷新") { ui.launchItems = LaunchItems.scan() }
                         .buttonStyle(.bordered).controlSize(.small)
                     Button("打开文件夹") { LaunchItems.openUserFolder() }
                         .buttonStyle(.bordered).controlSize(.small)
                 }
-                if launchItems.isEmpty {
+                if ui.launchItems.isEmpty {
                     Text("未发现启动项 plist。").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    ForEach(launchItems) { item in
+                    ForEach(ui.launchItems) { item in
                         HStack(spacing: 8) {
                             Text(item.user ? "用户" : "系统")
                                 .font(.caption2)
@@ -982,13 +955,13 @@ struct AdvancedToolsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button(model.diskHealth == nil ? "检测" : "重新检测") {
-                        checkingDisk = true
+                        ui.checkingDisk = true
                         model.checkDiskHealth()
                     }
                     .buttonStyle(.borderedProminent).controlSize(.small)
                     .tint(model.accentColor)
-                    .disabled(checkingDisk)
-                    if checkingDisk { ProgressView().scaleEffect(0.6) }
+                    .disabled(ui.checkingDisk)
+                    if ui.checkingDisk { ProgressView().scaleEffect(0.6) }
                     Spacer()
                 }
                 if let h = model.diskHealth {
@@ -1003,7 +976,7 @@ struct AdvancedToolsView: View {
                         Text("检测于 " + timeStr(at)).font(.caption2).foregroundStyle(.secondary)
                     }
                 } else {
-                    Text(checkingDisk ? "检测中…" : "尚未检测。")
+                    Text(ui.checkingDisk ? "检测中…" : "尚未检测。")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -1017,13 +990,13 @@ struct AdvancedToolsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button(model.wifiInfo == nil ? "获取" : "刷新") {
-                        refreshingWiFi = true
+                        ui.refreshingWiFi = true
                         model.refreshWiFiInfo()
                     }
                     .buttonStyle(.borderedProminent).controlSize(.small)
                     .tint(model.accentColor)
-                    .disabled(refreshingWiFi)
-                    if refreshingWiFi { ProgressView().scaleEffect(0.6) }
+                    .disabled(ui.refreshingWiFi)
+                    if ui.refreshingWiFi { ProgressView().scaleEffect(0.6) }
                     Spacer()
                 }
                 if let w = model.wifiInfo {
@@ -1036,7 +1009,7 @@ struct AdvancedToolsView: View {
                     gridRow("网关", w.gateway ?? "—")
                     gridRow("DNS", w.dns.isEmpty ? "—" : w.dns.joined(separator: ", "))
                 } else {
-                    Text(refreshingWiFi ? "获取中…" : "尚未获取。")
+                    Text(ui.refreshingWiFi ? "获取中…" : "尚未获取。")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -1049,7 +1022,7 @@ struct AdvancedToolsView: View {
         card(title: "CPU 性能跑分", icon: "gauge.high") {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Button("开始跑分") { showBenchmark = true }
+                    Button("开始跑分") { ui.showBenchmark = true }
                         .buttonStyle(.borderedProminent).controlSize(.small)
                         .tint(model.accentColor)
                     Spacer()
@@ -1138,4 +1111,13 @@ struct AdvancedToolsView: View {
     private func timeStr(_ d: Date) -> String {
         let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; return f.string(from: d)
     }
+}
+
+// MARK: - 高级功能页局部状态（工具链宏不可用，改用 ObservableObject 包装）
+
+final class AdvancedToolsUIState: ObservableObject {
+    @Published var launchItems: [LaunchItem] = []
+    @Published var showBenchmark = false
+    @Published var checkingDisk = false
+    @Published var refreshingWiFi = false
 }

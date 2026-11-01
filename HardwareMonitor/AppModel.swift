@@ -752,6 +752,13 @@ final class AppModel: ObservableObject {
         hub.start(interval: refreshInterval)
         hub.sampleNow()
         startClipboardMonitor()
+
+        // 专注模块接线：阶段结束 → 自定义提示音 + 系统通知
+        focusEngine.onFinish = { [weak self] phase in
+            Task { @MainActor in self?.handleFocusStageFinished(phase) }
+        }
+        // 上次开启过噪音检测则自动恢复（关闭状态绝不占用麦克风）
+        if focusNoise.enabled { focusNoise.start() }
     }
 
     func stop() {
@@ -1142,62 +1149,56 @@ final class AppModel: ObservableObject {
     // 颜色工具
     @Published var colorHex = "#4F8CFF"
 
-    // 番茄钟
-    @Published var pomoMinutes = 25
-    @Published var pomoRemaining = 25 * 60
-    @Published var pomoRunning = false
-    private var pomoTimer: Timer?
+    // MARK: - 专注模块（26DF10Q1beta.0.0.7 新增）
+
+    /// 精确番茄钟引擎（单调时钟锚点法，睡眠唤醒后自动重校准）
+    let focusEngine = FocusEngine()
+    /// 麦克风噪音检测（可关闭；关闭后不占用麦克风）
+    let focusNoise = NoiseMonitor()
+    /// 番茄钟结束提示音（内置音 / 自定义音频文件 + 独立音量）
+    let focusSound = FocusSoundPlayer()
+    /// 专注全屏窗口控制器
+    private let focusFullScreenController = FocusFullScreenController()
+
+    @Published var isFocusFullScreen = false
+    /// 引导教程运行中（引导期间不触发自动切页）
+    @Published var tourRunning = false
 
     // 便签（自动保存）
     @Published var noteText: String = "" {
         didSet { UserDefaults.standard.set(noteText, forKey: "noteText") }
     }
 
-    // MARK: - 番茄钟
+    // MARK: - 专注（番茄钟 / 全屏 / 提示音）
 
-    func setPomodoroMinutes(_ m: Int) {
-        pomoMinutes = max(1, min(120, m))
-        if !pomoRunning { pomoRemaining = pomoMinutes * 60 }
+    /// 进入沉浸式专注全屏
+    func enterFocusFullScreen() {
+        focusFullScreenController.show(model: self, engine: focusEngine,
+                                       noise: focusNoise, sound: focusSound)
+        isFocusFullScreen = true
     }
 
-    func startPomodoro() {
-        stopPomodoro()
-        pomoRemaining = pomoMinutes * 60
-        pomoRunning = true
-        let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.pomodoroTick() }
+    /// 退出专注全屏
+    func exitFocusFullScreen() {
+        focusFullScreenController.close()
+        isFocusFullScreen = false
+    }
+
+    /// 番茄钟阶段结束：播放提示音 + 发系统通知
+    func handleFocusStageFinished(_ phase: FocusEngine.Phase) {
+        focusSound.playFinish()
+        let content = UNMutableNotificationContent()
+        if phase == .focusing {
+            content.title = LZ.t("番茄钟完成", "Pomodoro Finished")
+            content.body = LZ.t("\(Int(focusEngine.total / 60)) 分钟专注结束，休息一下吧",
+                                "\(Int(focusEngine.total / 60)) minutes of focus done. Take a break.")
+        } else {
+            content.title = LZ.t("休息结束", "Break Finished")
+            content.body = LZ.t("回来继续专注吧", "Back to focus.")
         }
-        RunLoop.main.add(t, forMode: .common)
-        pomoTimer = t
-    }
-
-    func stopPomodoro() {
-        pomoTimer?.invalidate()
-        pomoTimer = nil
-        pomoRunning = false
-    }
-
-    func resetPomodoro() {
-        stopPomodoro()
-        pomoRemaining = pomoMinutes * 60
-    }
-
-    private func pomodoroTick() {
-        guard pomoRunning else { return }
-        if pomoRemaining > 0 {
-            pomoRemaining -= 1
-            if pomoRemaining == 0 {
-                stopPomodoro()
-                // 完成通知
-                let content = UNMutableNotificationContent()
-                content.title = LZ.t("番茄钟完成", "Pomodoro Finished")
-                content.body = LZ.t("\(pomoMinutes) 分钟专注结束，休息一下吧", "\(pomoMinutes) minutes of focus done. Take a break.")
-                content.sound = .default
-                UNUserNotificationCenter.current().add(UNNotificationRequest(
-                    identifier: "hwmon.pomo.\(Date().timeIntervalSince1970)",
-                    content: content, trigger: nil))
-                NSSound.beep()
-            }
-        }
+        content.sound = .default
+        UNUserNotificationCenter.current().add(UNNotificationRequest(
+            identifier: "hwmon.focus.\(Int(Date().timeIntervalSince1970))",
+            content: content, trigger: nil))
     }
 }

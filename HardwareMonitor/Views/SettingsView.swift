@@ -104,12 +104,52 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("启用噪音检测", isOn: Binding(
+                    get: { model.focusNoise.enabled },
+                    set: { model.focusNoise.setEnabled($0) }
+                ))
+                Text(model.focusNoise.authorized ? "麦克风权限已授权" : "未授权：开启噪音检测时会请求麦克风权限")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Divider()
+                Toggle("番茄钟结束提示音", isOn: Binding(
+                    get: { model.focusSound.enabled },
+                    set: { model.focusSound.enabled = $0 }
+                ))
+                HStack {
+                    Image(systemName: model.focusSound.volume == 0 ? "speaker.slash" : "speaker.wave.2")
+                        .foregroundStyle(.secondary)
+                    Slider(value: Binding(
+                        get: { model.focusSound.volume },
+                        set: { model.focusSound.volume = $0 }
+                    ), in: 0...1)
+                    Text("\(Int(model.focusSound.volume * 100))%")
+                        .font(.caption.monospacedDigit())
+                        .frame(width: 40, alignment: .trailing)
+                }
+                Button("试听提示音") { model.focusSound.preview() }
+            } header: {
+                Text("专注与噪音")
+            } footer: {
+                Text("噪音检测关闭后完全不占用麦克风，系统麦克风指示灯会熄灭。提示音支持内置音效或自定义音频文件。")
+            }
+
+            Section {
+                Button("重新播放新手引导") {
+                    UserDefaults.standard.set(false, forKey: "onboardingCompletedV1")
+                    NotificationCenter.default.post(name: .restartOnboardingTour, object: nil)
+                }
+            } header: {
+                Text("新手引导")
+            }
+
+            Section {
                 LabeledContent("数据来源") {
                     Text("IOKit / 系统内核接口")
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("版本") {
-                    Text("26DF10Q1beta.0.0.3").foregroundStyle(.secondary)
+                    Text("26DF10Q1beta.0.0.7").foregroundStyle(.secondary)
                 }
             } header: {
                 Text("关于")
@@ -181,4 +221,9 @@ struct ThresholdRow: View {
         }
         .padding(.vertical, 2)
     }
+}
+
+extension Notification.Name {
+    /// 设置页触发：重新播放新手引导（由主窗口接收）
+    static let restartOnboardingTour = Notification.Name("hwmon.restartOnboardingTour")
 }
