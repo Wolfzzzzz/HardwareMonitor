@@ -2,6 +2,16 @@
 
 A macOS menu bar hardware monitor. Live CPU, memory, disk, network, battery, brightness and process stats, with trend charts and threshold alerts, plus a small draggable floating panel. Built with SwiftUI, all data comes straight from system APIs. No third-party dependencies.
 
+## Download
+
+**[Latest release](https://github.com/Wolfzzzzz/HardwareMonitor/releases/latest)** · [All releases](https://github.com/Wolfzzzzz/HardwareMonitor/releases)
+
+- File: `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.zip` (~1.3 MB)
+- Requires macOS 14.0+ on Apple Silicon (arm64)
+- Unzip, drag `HardwareMonitor.app` into `/Applications`
+- First launch: **right-click → Open** (ad-hoc signed, not notarized). If macOS says the app is damaged, run `xattr -dr com.apple.quarantine /Applications/HardwareMonitor.app`
+- No Dock icon: click the thermometer icon on the right side of the menu bar → "Open Main Window"
+
 ## What it shows
 
 - CPU usage, memory usage and breakdown, free disk space

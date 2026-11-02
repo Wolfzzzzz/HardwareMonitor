@@ -4,6 +4,26 @@
 
 > [English](README_EN.md)
 
+## 下载安装
+
+**[下载最新版](https://github.com/Wolfzzzzz/HardwareMonitor/releases/latest)** · [全部版本](https://github.com/Wolfzzzzz/HardwareMonitor/releases)
+
+| 项 | 说明 |
+| --- | --- |
+| 文件 | `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.zip`（约 1.3 MB） |
+| 系统 | macOS 14.0 或更高（在 macOS 27.2 上开发验证） |
+| 架构 | Apple Silicon（arm64） |
+
+安装步骤：
+
+1. 下载并解压，把 `HardwareMonitor.app` 拖进「应用程序」文件夹
+2. 首次打开请**右键 App → 打开**（本版本为 ad-hoc 签名，未做 Apple 公证）
+3. 若系统提示「已损坏」，在终端执行：
+   `xattr -dr com.apple.quarantine /Applications/HardwareMonitor.app`
+4. 启动后**没有 Dock 图标**，点菜单栏最右侧的温度计图标 → 「打开主界面」
+
+需要自己编译的话见文末[构建](#构建)一节。
+
 macOS 菜单栏硬件监控。实时看 CPU、内存、磁盘、网络、电池、亮度、进程占用，带趋势图和阈值告警，还有一个能拖来拖去的悬浮小窗。纯 SwiftUI 写的，数据全是系统接口直接读，没有第三方依赖，跑起来内存占用很低。
 
 ## 能看什么
