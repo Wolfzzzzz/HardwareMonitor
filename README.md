@@ -1,6 +1,6 @@
 # HardwareMonitor
 
-> 版本 **26DF10Q1beta1.0.9** · 全部功能免费，无任何付费墙。
+> 版本 **26DF10Q1beta1.0.10** · 全部功能免费，无任何付费墙。
 
 > [English](README_EN.md)
 
@@ -10,7 +10,7 @@
 
 | 项 | 说明 |
 | --- | --- |
-| 安装包 | `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.pkg`（推荐，双击安装）<br>`HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.zip`（解压后手动拖动） |
+| 安装包 | `HardwareMonitor-26DF10Q1beta1.0.10-macOS-arm64.pkg`（推荐，双击安装）<br>`HardwareMonitor-26DF10Q1beta1.0.10-macOS-arm64.zip`（解压后手动拖动） |
 | 大小 | 约 1.3 MB |
 | 系统 | macOS 14.0 或更高（在 macOS 27.2 上开发验证） |
 | 架构 | Apple Silicon（arm64） |
