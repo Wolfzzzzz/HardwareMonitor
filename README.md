@@ -10,17 +10,27 @@
 
 | 项 | 说明 |
 | --- | --- |
-| 文件 | `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.zip`（约 1.3 MB） |
+| 安装包 | `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.pkg`（推荐，双击安装）<br>`HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.zip`（解压后手动拖动） |
+| 大小 | 约 1.3 MB |
 | 系统 | macOS 14.0 或更高（在 macOS 27.2 上开发验证） |
 | 架构 | Apple Silicon（arm64） |
 
 安装步骤：
 
-1. 下载并解压，把 `HardwareMonitor.app` 拖进「应用程序」文件夹
-2. 首次打开请**右键 App → 打开**（本版本为 ad-hoc 签名，未做 Apple 公证）
-3. 若系统提示「已损坏」，在终端执行：
-   `xattr -dr com.apple.quarantine /Applications/HardwareMonitor.app`
-4. 启动后**没有 Dock 图标**，点菜单栏最右侧的温度计图标 → 「打开主界面」
+**方式一：pkg（推荐）**
+
+1. 下载 `.pkg`，双击运行，一路「继续 / 安装」，自动装进「应用程序」
+2. 双击启动；若被系统拦截，去 **系统设置 → 隐私与安全性** 底部点「仍要打开」，或右键 App → 打开
+
+**方式二：zip**
+
+1. 下载 `.zip` 并解压，把 `HardwareMonitor.app` 拖进「应用程序」文件夹
+2. 首次打开请**右键 App → 打开**
+
+> 本版本为 ad-hoc 签名、未做 Apple 公证，首次打开的安全提示属正常现象。
+> 若提示「已损坏」，终端执行：`xattr -dr com.apple.quarantine /Applications/HardwareMonitor.app`
+
+两种方式装好后都一样：启动时**没有 Dock 图标**，点菜单栏最右侧的温度计图标 → 「打开主界面」。
 
 需要自己编译的话见文末[构建](#构建)一节。
 

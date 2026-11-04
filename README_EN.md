@@ -6,10 +6,9 @@ A macOS menu bar hardware monitor. Live CPU, memory, disk, network, battery, bri
 
 **[Latest release](https://github.com/Wolfzzzzz/HardwareMonitor/releases/latest)** · [All releases](https://github.com/Wolfzzzzz/HardwareMonitor/releases)
 
-- File: `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.zip` (~1.3 MB)
+- Packages: `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.pkg` (recommended, double-click to install) or `HardwareMonitor-26DF10Q1beta1.0.9-macOS-arm64.zip` (drag the app into `/Applications`)
 - Requires macOS 14.0+ on Apple Silicon (arm64)
-- Unzip, drag `HardwareMonitor.app` into `/Applications`
-- First launch: **right-click → Open** (ad-hoc signed, not notarized). If macOS says the app is damaged, run `xattr -dr com.apple.quarantine /Applications/HardwareMonitor.app`
+- Ad-hoc signed, not notarized. First launch: right-click → Open, or allow it in System Settings → Privacy & Security. If macOS says the app is damaged, run `xattr -dr com.apple.quarantine /Applications/HardwareMonitor.app`
 - No Dock icon: click the thermometer icon on the right side of the menu bar → "Open Main Window"
 
 ## What it shows
