@@ -93,6 +93,8 @@ final class FocusEngine: ObservableObject {
 
     /// 今日完成番茄数
     @Published private(set) var completedToday: Int = 0
+    /// 最近 30 天每日专注秒数（key = yyyy-MM-dd），用于近 7 天柱状图与连续天数
+    @Published private(set) var dailyFocus: [String: Double] = [:]
     /// 今日专注总秒数
     @Published private(set) var focusSecondsToday: Double = 0
     /// 本轮第几个番茄（0 表示尚未开始）
@@ -305,6 +307,7 @@ final class FocusEngine: ObservableObject {
         if finished == .focusing {
             completedToday += 1
             focusSecondsToday += total
+            dailyFocus[FocusEngine.dayString()] = (dailyFocus[FocusEngine.dayString()] ?? 0) + total
             saveStats()
 
             phase = .idle
@@ -488,6 +491,10 @@ final class FocusEngine: ObservableObject {
             d.set(0, forKey: "focusCompletedToday")
             d.set(0.0, forKey: "focusSecondsToday")
         }
+        if let map = d.dictionary(forKey: "focusDailyMap") as? [String: Double] {
+            dailyFocus = map
+        }
+        pruneDaily()
     }
 
     private func saveStats() {
@@ -495,6 +502,50 @@ final class FocusEngine: ObservableObject {
         d.set(FocusEngine.dayString(), forKey: "focusStatsDate")
         d.set(completedToday, forKey: "focusCompletedToday")
         d.set(focusSecondsToday, forKey: "focusSecondsToday")
+        d.set(dailyFocus, forKey: "focusDailyMap")
+    }
+
+    /// 只保留最近 30 天，避免 UserDefaults 无限增长
+    private func pruneDaily() {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        let cutoffKey = FocusEngine.dayString(cutoff)
+        let trimmed = dailyFocus.filter { $0.key >= cutoffKey }
+        if trimmed.count != dailyFocus.count { dailyFocus = trimmed }
+    }
+
+    // MARK: - 统计查询（近 7 天 / 连续天数）
+
+    /// 近 n 天（含今天，按日期升序）每天专注秒数
+    func recentDays(_ n: Int = 7) -> [(date: Date, seconds: Double)] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return (0..<n).reversed().compactMap { offset -> (Date, Double)? in
+            guard let d = cal.date(byAdding: .day, value: -offset, to: today) else { return nil }
+            return (d, dailyFocus[FocusEngine.dayString(d)] ?? 0)
+        }
+    }
+
+    /// 连续专注天数（今天没记录则从昨天开始算）
+    func streakDays() -> Int {
+        let cal = Calendar.current
+        var day = cal.startOfDay(for: Date())
+        if (dailyFocus[FocusEngine.dayString(day)] ?? 0) <= 0 {
+            guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { return 0 }
+            day = prev
+        }
+        var count = 0
+        while (dailyFocus[FocusEngine.dayString(day)] ?? 0) > 0 {
+            count += 1
+            guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { break }
+            day = prev
+            if count > 400 { break }
+        }
+        return count
+    }
+
+    /// 近 n 天累计专注秒数
+    func recentTotalSeconds(_ n: Int = 7) -> Double {
+        recentDays(n).reduce(0) { $0 + $1.seconds }
     }
 
     /// 跨天清零今日统计

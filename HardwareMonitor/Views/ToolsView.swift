@@ -755,6 +755,7 @@ struct AdvancedToolsView: View {
             wifiCard
             benchmarkCard
             speedCard
+            csvCard
 
             Spacer(minLength: 0)
         }
@@ -1053,6 +1054,35 @@ struct AdvancedToolsView: View {
 
     // MARK: 网络测速
 
+    // MARK: 导出监控数据（26DF10Q1beta2.1.1）
+
+    private var csvCard: some View {
+        card(title: "导出监控数据", icon: "square.and.arrow.up") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("把当前缓存的 \(model.history.count) 条采样导出成 CSV：时间、CPU、内存、芯片/GPU 温度、网络上下行。Excel、Numbers 直接打开。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Button("导出 CSV…") {
+                        if CSVExport.saveMonitoringCSV(model.history) {
+                            ui.exportMessage = "已导出 \(model.history.count) 条记录"
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(model.history.isEmpty)
+
+                    if let msg = ui.exportMessage {
+                        Text(msg)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+        }
+    }
+
     private var speedCard: some View {
         card(title: "网络测速", icon: "speedometer") {
             VStack(alignment: .leading, spacing: 8) {
@@ -1120,4 +1150,5 @@ final class AdvancedToolsUIState: ObservableObject {
     @Published var showBenchmark = false
     @Published var checkingDisk = false
     @Published var refreshingWiFi = false
+    @Published var exportMessage: String?
 }

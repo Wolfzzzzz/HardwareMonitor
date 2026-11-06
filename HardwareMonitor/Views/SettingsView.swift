@@ -80,6 +80,35 @@ struct SettingsView: View {
                 )
             }
 
+            Section {
+                Picker("显示内容", selection: Binding(
+                    get: { model.menuBarStyle },
+                    set: { model.menuBarStyle = $0 }
+                )) {
+                    ForEach(MenuBarStyle.allCases) { style in
+                        Text(style.label).tag(style.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                Toggle("显示图标", isOn: Binding(
+                    get: { model.menuBarShowIcon },
+                    set: { model.menuBarShowIcon = $0 }
+                ))
+                Toggle("显示数值文字", isOn: Binding(
+                    get: { model.menuBarShowText },
+                    set: { model.menuBarShowText = $0 }
+                ))
+                LabeledContent("当前预览") {
+                    Text(model.menuBarText)
+                        .font(.body.monospacedDigit())
+                        .foregroundStyle(model.menuBarColor)
+                }
+            } header: {
+                Text("菜单栏显示")
+            } footer: {
+                Text("只显示图标最省空间；开启数值文字后可直接在菜单栏看实时读数。图标与文字都关闭时会自动回退为图标。")
+            }
+
             Section("悬浮窗显示模块") {
                 Toggle("温度与风扇", isOn: $model.showTemp)
                 Toggle("CPU 占用", isOn: $model.showCPU)

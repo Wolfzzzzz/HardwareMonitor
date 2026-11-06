@@ -10,11 +10,23 @@ struct HardwareMonitorApp: App {
                 .environmentObject(model)
                 .onAppear { model.start() }
         } label: {
-            Label("硬件监控", systemImage: model.alertActive ? "flame.fill" : "thermometer.medium")
-                .onAppear { model.start() }
-                #if DEBUG
-                .background(SmokeTestDriver(model: model))
-                #endif
+            HStack(spacing: 3) {
+                // 图标：勾选显示图标，或文字被关掉时兜底显示，避免菜单栏空着
+                if model.menuBarShowIcon || !model.menuBarShowText {
+                    Image(systemName: model.alertActive ? "flame.fill" : "thermometer.medium")
+                        .foregroundStyle(model.menuBarColor)
+                }
+                if model.menuBarShowText {
+                    Text(model.menuBarText)
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(model.menuBarColor)
+                }
+            }
+            .onAppear { model.start() }
+            #if DEBUG
+            .background(SmokeTestDriver(model: model))
+            #endif
         }
         .menuBarExtraStyle(.window)
 
@@ -47,6 +59,15 @@ struct SmokeTestDriver: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     openWindow(id: "main")
                     print("HWMON_SMOKE bg enabled=\(model.focusBackground.enabled) hasImage=\(model.focusBackground.hasImage) overlay=\(String(format: "%.2f", model.focusBackground.overlayOpacity)) file=\(model.focusBackground.statusText)")
+                    print("HWMON_SMOKE menubar style=\(model.menuBarStyle) showIcon=\(model.menuBarShowIcon) showText=\(model.menuBarShowText) text=\(model.menuBarText)")
+                    if let buf = FocusAmbience.synthesize(scene: .rain, seconds: 8, sampleRate: 44_100) {
+                        print("HWMON_SMOKE ambience frames=\(buf.frameLength) channels=\(buf.format.channelCount)")
+                    } else {
+                        print("HWMON_SMOKE ambience FAILED")
+                    }
+                    let csv = CSVExport.monitoringCSV(model.history)
+                    print("HWMON_SMOKE csv points=\(model.history.count) lines=\(csv.split(separator: "\r\n").count) bytes=\(csv.utf8.count)")
+                    print("HWMON_SMOKE stats week=\(model.focusEngine.recentDays(7).count) streak=\(model.focusEngine.streakDays())")
                     var delay = 1.8
                     for tab in 0...3 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {

@@ -401,6 +401,11 @@ final class OnboardingController: ObservableObject {
                      detail: "内置十几种提示音，也可以用自己的音频文件，音量能单独调。",
                      tab: 3, toolTab: nil, anchor: "focus.sound"),
 
+            TourStep(id: "focus.ambience",
+                     title: "专注音景",
+                     detail: "雨声、海浪、风扇三种环境声，本地合成不联网，戴耳机隔掉杂音更容易进入状态。",
+                     tab: 3, toolTab: nil, anchor: "focus.ambience"),
+
             TourStep(id: "focus.background",
                      title: "背景照片",
                      detail: "挑一张照片当专注背景，系统会自动盖一层黑色蒙版——照片看得见，字也看得清，蒙版深浅可调。",

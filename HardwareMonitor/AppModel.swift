@@ -679,6 +679,9 @@ final class AppModel: ObservableObject {
         remotePort = d.object(forKey: "remotePort") == nil ? 8900 : d.integer(forKey: "remotePort")
         pressureThreads = d.object(forKey: "pressureThreads") == nil ? 4 : d.double(forKey: "pressureThreads")
         hotkeysEnabled = d.bool(forKey: "hotkeysEnabled")
+        menuBarStyle = d.string(forKey: "menuBarStyle") ?? MenuBarStyle.temp.rawValue
+        menuBarShowIcon = d.object(forKey: "menuBarShowIcon") == nil ? true : d.bool(forKey: "menuBarShowIcon")
+        menuBarShowText = d.bool(forKey: "menuBarShowText")
         // 上次远程监控开着 → 启动时自动恢复监听
         if remoteEnabled { startRemote() }
     }
@@ -728,10 +731,7 @@ final class AppModel: ObservableObject {
             self.updateDockBadge()
             // 菜单栏文本 2 秒节流（MenuBarExtra 高频刷新卡菜单栏）
             if self.uiTick % 2 == 1 {
-                let t = snap.cpuTempC
-                self.menuBarText = (t.map { String(format: "%.0f°", $0) } ?? "--")
-                    + " · " + String(format: "%.0f%%", snap.cpuPercentValue * 100)
-                self.menuBarColor = t.map { $0 > 85 ? .red : ($0 > 70 ? .orange : .primary) } ?? .primary
+                self.updateMenuBarText(snap)
             }
             // 重活移后台：widget 共享 JSON 编码 + netstat 流量（约 30 秒一次）
             self.trafficTick += 1
@@ -777,6 +777,57 @@ final class AppModel: ObservableObject {
     /// 菜单栏文本（每 2 次采样更新，避免 MenuBarExtra 高频刷新卡菜单栏）
     @Published var menuBarText = "-- · --%"
     @Published var menuBarColor: Color = .primary
+
+    // MARK: - 菜单栏自定义（26DF10Q1beta2.1.1 新增）
+    //
+    // 注意：didSet 只写盘，不调用其它方法——@Published 在 init 赋值时也会触发 didSet，
+    // 那时其它属性可能尚未初始化完，直接调方法会崩。文本刷新交给采样 tick。
+
+    /// 菜单栏显示样式：temp / cpu / memory / focus / tempCPU
+    @Published var menuBarStyle: String = MenuBarStyle.temp.rawValue {
+        didSet { UserDefaults.standard.set(menuBarStyle, forKey: "menuBarStyle") }
+    }
+    /// 是否在菜单栏显示 SF Symbol 图标
+    @Published var menuBarShowIcon: Bool = true {
+        didSet { UserDefaults.standard.set(menuBarShowIcon, forKey: "menuBarShowIcon") }
+    }
+    /// 是否在菜单栏显示文字数值
+    @Published var menuBarShowText: Bool = false {
+        didSet { UserDefaults.standard.set(menuBarShowText, forKey: "menuBarShowText") }
+    }
+
+    /// 按当前样式刷新菜单栏文案与配色
+    func updateMenuBarText(_ snap: SystemSnapshot) {
+        let style = MenuBarStyle(rawValue: menuBarStyle) ?? .temp
+        var text = "--"
+        var color: Color = .primary
+
+        switch style {
+        case .temp:
+            let t = snap.cpuTempC
+            text = t.map { String(format: "%.0f°", $0) } ?? "--"
+            color = t.map { $0 > 85 ? .red : ($0 > 70 ? .orange : .primary) } ?? .primary
+        case .cpu:
+            let p = snap.cpuPercentValue * 100
+            text = String(format: "%.0f%%", p)
+            color = p > 85 ? .red : (p > 65 ? .orange : .primary)
+        case .memory:
+            let p = snap.memPercentValue * 100
+            text = String(format: "%.0f%%", p)
+            color = p > 90 ? .red : (p > 75 ? .orange : .primary)
+        case .focus:
+            text = focusEngine.remainingText
+            color = focusEngine.phase == .focusing ? accentColor : .primary
+        case .tempCPU:
+            let t = snap.cpuTempC
+            text = (t.map { String(format: "%.0f°", $0) } ?? "--")
+                + " · " + String(format: "%.0f%%", snap.cpuPercentValue * 100)
+            color = t.map { $0 > 85 ? .red : ($0 > 70 ? .orange : .primary) } ?? .primary
+        }
+
+        menuBarText = text
+        menuBarColor = color
+    }
 
     /// 历史采样点上限（免费版即提供完整 1200 点历史）
     var historyLimit: Int { 1200 }
@@ -1159,6 +1210,8 @@ final class AppModel: ObservableObject {
     let focusSound = FocusSoundPlayer()
     /// 专注界面背景照片（自动叠加可调黑色蒙版，保证文字可读）
     let focusBackground = FocusBackground()
+    /// 专注音景（白噪音：雨声 / 海浪 / 风扇，本地合成，无素材）
+    let focusAmbience = FocusAmbience()
     /// 专注全屏窗口控制器
     private let focusFullScreenController = FocusFullScreenController()
 
@@ -1202,5 +1255,28 @@ final class AppModel: ObservableObject {
         UNUserNotificationCenter.current().add(UNNotificationRequest(
             identifier: "hwmon.focus.\(Int(Date().timeIntervalSince1970))",
             content: content, trigger: nil))
+    }
+}
+
+// MARK: - 菜单栏显示样式（26DF10Q1beta2.1.1）
+
+/// 菜单栏上显示什么
+enum MenuBarStyle: String, CaseIterable, Identifiable {
+    case temp      // 仅芯片温度
+    case cpu       // 仅 CPU 占用
+    case memory    // 仅内存占用
+    case focus     // 番茄钟剩余时间
+    case tempCPU   // 温度 · CPU（旧版行为）
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .temp: return "芯片温度"
+        case .cpu: return "CPU 占用"
+        case .memory: return "内存占用"
+        case .focus: return "番茄钟剩余"
+        case .tempCPU: return "温度 · CPU"
+        }
     }
 }

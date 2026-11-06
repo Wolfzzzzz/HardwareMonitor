@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Charts
 
 // MARK: - 专注页
 
@@ -29,6 +30,9 @@ struct FocusView: View {
                             .id("focus.noise")
                         FocusSoundCard(sound: model.focusSound)
                             .id("focus.sound")
+                        FocusAmbienceCard(ambience: model.focusAmbience)
+                            .tourAnchor("focus.ambience")
+                            .id("focus.ambience")
                         FocusBackgroundCard(background: model.focusBackground)
                             .tourAnchor("focus.background")
                             .id("focus.background")
@@ -630,28 +634,87 @@ private struct FocusSoundCard: View {
 private struct FocusStatsCard: View {
     @ObservedObject var engine: FocusEngine
 
+    private struct DayValue: Identifiable {
+        let id: String
+        let label: String
+        let minutes: Double
+        let isToday: Bool
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            FocusCardHeader(icon: "chart.bar", title: "今日统计")
+            FocusCardHeader(icon: "chart.bar", title: "专注统计")
 
             HStack(spacing: 12) {
-                metric(title: "完成番茄", value: "\(engine.completedToday)", unit: "个")
-                metric(title: "专注总时长", value: focusDurationValue, unit: "")
-                metric(title: "平均每个番茄", value: averageValue, unit: "分钟")
+                metric(title: "今日番茄", value: "\(engine.completedToday)", unit: "个")
+                metric(title: "今日专注", value: focusDurationValue, unit: "")
+                metric(title: "连续天数", value: "\(engine.streakDays())", unit: "天")
+            }
+
+            Divider().opacity(0.35)
+
+            HStack {
+                Text("近 7 天")
+                    .font(.system(size: 11, weight: .semibold))
+                Spacer()
+                Text("累计 " + focusDurationText(engine.recentTotalSeconds(7)))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+
+            if weekTotal > 0 {
+                Chart(weekData) { item in
+                    BarMark(
+                        x: .value("日", item.label),
+                        y: .value("分钟", item.minutes)
+                    )
+                    .foregroundStyle(item.isToday ? Color.accentColor : Color.accentColor.opacity(0.38))
+                    .cornerRadius(4)
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) { _ in
+                        AxisGridLine().foregroundStyle(Color.primary.opacity(0.08))
+                        AxisValueLabel().font(.system(size: 9))
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks { _ in
+                        AxisValueLabel().font(.system(size: 9))
+                    }
+                }
+                .frame(height: 108)
+            } else {
+                Text("还没有记录。完成一个番茄后，这里会出现最近 7 天的柱状图。")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 22)
             }
         }
         .padding(16)
         .glassBackground(cornerRadius: 14)
     }
 
-    private var focusDurationValue: String {
-        focusDurationText(engine.focusSecondsToday)
+    private var weekData: [DayValue] {
+        let names = ["日", "一", "二", "三", "四", "五", "六"]
+        let days = engine.recentDays(7)
+        return days.enumerated().map { idx, item in
+            let weekday = Calendar.current.component(.weekday, from: item.date) - 1
+            return DayValue(
+                id: "\(idx)-\(weekday)",
+                label: "周" + names[max(0, min(6, weekday))],
+                minutes: item.seconds / 60,
+                isToday: idx == days.count - 1
+            )
+        }
     }
 
-    private var averageValue: String {
-        guard engine.completedToday > 0 else { return "—" }
-        let minutes = engine.focusSecondsToday / 60 / Double(engine.completedToday)
-        return String(format: "%.0f", minutes)
+    private var weekTotal: Double {
+        weekData.reduce(0) { $0 + $1.minutes }
+    }
+
+    private var focusDurationValue: String {
+        focusDurationText(engine.focusSecondsToday)
     }
 
     private func metric(title: String, value: String, unit: String) -> some View {
@@ -761,5 +824,84 @@ private struct FocusBackgroundCard: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.12))
         )
+    }
+}
+
+// MARK: - 专注音景卡（26DF10Q1beta2.1.1）
+
+/// 白噪音场景：雨声 / 海浪 / 风扇，本地合成
+private struct FocusAmbienceCard: View {
+    @ObservedObject var ambience: FocusAmbience
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            FocusCardHeader(icon: "waveform", title: "专注音景")
+
+            Text("本地合成的环境声，不联网、不录音。戴耳机效果更好。")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 8) {
+                ForEach(FocusAmbience.Scene.allCases) { scene in
+                    Button {
+                        ambience.sceneID = scene.rawValue
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: scene.icon)
+                                .font(.system(size: 16))
+                            Text(scene.label)
+                                .font(.system(size: 11))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(ambience.sceneID == scene.rawValue
+                                      ? Color.accentColor.opacity(0.18)
+                                      : Color.primary.opacity(0.05))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(ambience.sceneID == scene.rawValue
+                                              ? Color.accentColor.opacity(0.5)
+                                              : Color.clear)
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    ambience.toggle()
+                } label: {
+                    Label(ambience.isPlaying ? "停止" : "播放",
+                          systemImage: ambience.isPlaying ? "stop.fill" : "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                Image(systemName: ambience.volume == 0 ? "speaker.slash" : "speaker.wave.2")
+                    .foregroundStyle(.secondary)
+                Slider(value: $ambience.volume, in: 0...1)
+                Text("\(Int(ambience.volume * 100))%")
+                    .font(.caption.monospacedDigit())
+                    .frame(width: 40, alignment: .trailing)
+            }
+
+            Text(ambience.scene.hint)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+
+            if let err = ambience.errorText {
+                Text(err)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassBackground(cornerRadius: 14)
     }
 }
