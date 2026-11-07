@@ -57,6 +57,7 @@ struct MainWindowView: View {
             tour.start()
         }
         .tint(model.accentColor)
+        .glassMotion(model.glassMotionEnabled)
         .preferredColorScheme(model.preferredColorScheme)
         .frame(minWidth: 780, minHeight: 560, alignment: .top)
         .background(

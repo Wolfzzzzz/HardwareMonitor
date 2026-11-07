@@ -68,6 +68,7 @@ struct SmokeTestDriver: View {
                     let csv = CSVExport.monitoringCSV(model.history)
                     print("HWMON_SMOKE csv points=\(model.history.count) lines=\(csv.split(separator: "\r\n").count) bytes=\(csv.utf8.count)")
                     print("HWMON_SMOKE stats week=\(model.focusEngine.recentDays(7).count) streak=\(model.focusEngine.streakDays())")
+                    print("HWMON_SMOKE glass motion=\(model.glassMotionEnabled)")
                     var delay = 1.8
                     for tab in 0...3 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {

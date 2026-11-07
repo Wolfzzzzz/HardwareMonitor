@@ -198,6 +198,8 @@ final class AppModel: ObservableObject {
 
     /// 主题皮肤 id（aurora/ocean/forest/magma/sakura/graphite）
     @Published var themeID: String = "aurora" { didSet { UserDefaults.standard.set(themeID, forKey: "themeID") } }
+    /// 液态玻璃流动光效：关闭后卡片变静态玻璃，可进一步降低占用
+    @Published var glassMotionEnabled: Bool = true { didSet { UserDefaults.standard.set(glassMotionEnabled, forKey: "glassMotionEnabled") } }
     /// 外观强制：system/dark/light
     @Published var appearanceID: String = "system" { didSet { UserDefaults.standard.set(appearanceID, forKey: "appearanceID") } }
     /// Dock 图标角标显示 CPU 温度（开启时切到普通模式让 Dock 图标可见）
@@ -640,7 +642,7 @@ final class AppModel: ObservableObject {
             "diskFreeThreshold": 20.0, "batteryPercentThreshold": 20.0,
             "showTemp": true, "showCPU": true, "showMemory": true, "showDisk": true,
             "showNetwork": true, "showBattery": true, "showBrightness": true, "showProcess": true,
-            "clipboardEnabled": true
+            "clipboardEnabled": true, "glassMotionEnabled": true
         ])
         refreshInterval = d.double(forKey: "refreshInterval")
         alertsEnabled = d.bool(forKey: "alertsEnabled")
@@ -665,6 +667,7 @@ final class AppModel: ObservableObject {
         appLanguage = d.string(forKey: "appLanguage") ?? "system"
         pendingLanguage = appLanguage
         themeID = d.string(forKey: "themeID") ?? "aurora"
+        glassMotionEnabled = d.object(forKey: "glassMotionEnabled") == nil ? true : d.bool(forKey: "glassMotionEnabled")
         appearanceID = d.string(forKey: "appearanceID") ?? "system"
         // 付费档位加载已移除（26DF10Q1beta.0.0.3 起免费开放）
         todayTrafficInMB = d.double(forKey: "todayTrafficInMB")

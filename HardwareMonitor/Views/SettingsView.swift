@@ -252,6 +252,19 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("液态玻璃流动光效", isOn: $model.glassMotionEnabled)
+                LiquidGlassPreview()
+                    .padding(.vertical, 4)
+                Text("卡片上的高光带、折射光斑、边缘亮点和融合光团会缓慢流动；鼠标移入卡片时高光增强。下面的预览可以直接拖动两枚玻璃球。关闭开关后是静态玻璃，功能不受影响。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("液态玻璃")
+            } footer: {
+                Text("系统开启「减少动态效果」时会自动变为静态。动画只重绘玻璃层，不会连带刷新监控数据。")
+            }
+
+            Section {
                 LabeledContent("数据来源") {
                     Text("IOKit / 系统内核接口")
                         .foregroundStyle(.secondary)

@@ -6,11 +6,11 @@ import Foundation
 /// patch 每次发版自增，major/minor 默认 0.0。
 enum AppVersion {
     /// 完整版本号
-    static let full = "26DF10Q1beta2.1.1"
+    static let full = "26DF10Q1beta2.1.2"
     /// 市场版本号（Info.plist CFBundleShortVersionString）
-    static let marketing = "2.1.1"
+    static let marketing = "2.1.2"
     /// 构建号（Info.plist CFBundleVersion）
-    static let build = "211"
+    static let build = "212"
 
     /// 设置页「关于」用的完整展示
     static var display: String { "\(full)（\(marketing) · build \(build)）" }
