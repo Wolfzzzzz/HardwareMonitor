@@ -34,6 +34,9 @@ final class AppModel: ObservableObject {
     @Published var showBrightness: Bool = true { didSet { UserDefaults.standard.set(showBrightness, forKey: "showBrightness") } }
     @Published var showProcess: Bool = true { didSet { UserDefaults.standard.set(showProcess, forKey: "showProcess") } }
 
+    /// 侧边栏是否展开（由标题栏左侧的原生按钮切换）
+    @Published var sidebarVisible: Bool = true
+
     // 自启（由设置页 onChange 触发应用，避免 didSet 中的 self 问题）
     @Published var launchAtLogin: Bool = false
     @Published var launchAtLoginError: String?

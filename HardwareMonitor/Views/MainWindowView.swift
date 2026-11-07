@@ -7,8 +7,11 @@ struct MainWindowView: View {
     @StateObject private var tour = OnboardingController()
 
     var body: some View {
-        NavigationSplitView {
-            AppSidebar(selection: $model.mainTab, accent: model.accentColor)
+        NavigationSplitView(columnVisibility: Binding<NavigationSplitViewVisibility>(
+            get: { model.sidebarVisible ? .automatic : .detailOnly },
+            set: { model.sidebarVisible = ($0 != .detailOnly) }
+        )) {
+            AppSidebar(selection: $model.mainTab)
                 .navigationSplitViewColumnWidth(min: 176, ideal: 196, max: 240)
                 .tourAnchor("tabs")
         } detail: {
@@ -107,6 +110,19 @@ struct MainWindowView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
+            // 苹果原生工具栏按钮：.bordered 样式 + 系统 sidebar 图标
+            Button {
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    model.sidebarVisible.toggle()
+                }
+            } label: {
+                Image(systemName: "sidebar.left")
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .help(LZ.t("显示或隐藏侧边栏", "Show or hide sidebar"))
             Image(systemName: "gauge.with.dots.needle.50percent")
                 .font(.title2)
                 .foregroundStyle(.blue)

@@ -26,7 +26,7 @@ private final class GlassHoverState: ObservableObject {
 
 // MARK: - 极淡的卡面流光
 /// 2.1.4 起收敛：卡片上只留一条很淡的白色高光带缓慢扫过 + 边缘亮点，
-/// 不再铺满彩色光斑和融合光团。液态玻璃的主视觉交给顶部标签栏的滑块。
+/// 不再铺满彩色光斑和融合光团。液态玻璃的主视觉收在侧边栏选中行内。
 private struct GlassSheen: View {
     let cornerRadius: CGFloat
     let intensity: Double

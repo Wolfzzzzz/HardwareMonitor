@@ -253,7 +253,7 @@ struct SettingsView: View {
 
             Section {
                 Toggle("液态玻璃流动光效", isOn: $model.glassMotionEnabled)
-                Text("卡片上只有一条极淡的高光带缓慢扫过，鼠标移入时略微变亮。关闭后是静态玻璃。液态玻璃的主效果在顶部标签栏。")
+                Text("卡片上只有一条极淡的高光带缓慢扫过，鼠标移入时略微变亮。关闭后是静态玻璃，侧边栏选中行也会去掉那层极淡的液态光晕。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             } header: {

@@ -1,172 +1,136 @@
 import SwiftUI
 import Combine
 
-/// 记录侧边栏每一行的真实位置，不靠硬编码行高猜坐标
-private struct SidebarRowFrameKey: PreferenceKey {
-    static var defaultValue: [Int: CGRect] = [:]
-    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
-        value.merge(nextValue()) { _, new in new }
+// MARK: - 侧边栏数据
+
+private struct SidebarItem: Identifiable {
+    let id: Int
+    let title: String
+    let icon: String
+}
+
+/// 一次切换的形变进度。用 ObservableObject 存状态，避开本机 Xcode-beta 的 @State 宏插件问题。
+final class SidebarGlowMotion: ObservableObject {
+    /// 0 → 1，由 withAnimation 逐帧插值给 Shape.animatableData
+    @Published var progress: CGFloat = 1
+    /// 跨多行切换 = 1，相邻切换 = 0.3，静态 = 0
+    @Published var intensity: CGFloat = 0
+}
+
+/// 选中行内部的柔和光晕。
+///
+/// 关键：**只画在选中行自己的 frame 里**，不跨行、不读全局坐标、不猜行位置。
+/// 位置完全由 SwiftUI 的列表行决定，所以永远不会盖到别的行上。
+/// 跨多行切换时短暂拉长、留一枚缩小的液滴和两枚小气泡，再收回成圆角矩形。
+private struct LiquidRowGlow: Shape {
+    var progress: CGFloat
+    var intensity: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let p = min(1, max(0, progress))
+        // 中段拉长，两端收回；上限锁在行高附近，绝不越出这一行
+        let stretch = 1 - intensity * 0.08 * CGFloat(sin(p * .pi))
+        let h = rect.height * stretch
+        let body = CGRect(x: rect.minX, y: rect.midY - h / 2,
+                          width: rect.width, height: h)
+        var path = Path(roundedRect: body, cornerRadius: 7, style: .continuous)
+
+        if intensity > 0.5 && p < 0.8 {
+            let q = p / 0.8
+            let r = max(0, rect.height * 0.15 * (1 - q))
+            if r > 0.6 {
+                path.addEllipse(in: CGRect(x: rect.minX + r * 0.7,
+                                           y: rect.midY - r,
+                                           width: r * 2, height: r * 2))
+                let bubble = r * 0.38
+                for k in 0..<2 {
+                    let bx = rect.minX + rect.width * (0.40 + 0.19 * CGFloat(k))
+                    let by = rect.midY + (k == 0 ? -1 : 1) * r * 0.75
+                    path.addEllipse(in: CGRect(x: bx - bubble, y: by - bubble,
+                                               width: bubble * 2, height: bubble * 2))
+                }
+            }
+        }
+        return path
     }
 }
 
-/// 一次切换的起点、终点、开始时刻；用 ObservableObject 避开 @State 宏
-final class SidebarMotion: ObservableObject {
-    @Published var fromIndex = 0
-    @Published var toIndex = 0
-    @Published var selectedIndex = 0
-    @Published var startedAt = Date.distantPast
-    @Published var frames: [Int: CGRect] = [:]
-    var span: Int { abs(toIndex - fromIndex) }
-}
+// MARK: - 原生侧边栏
 
-/// 苹果原生侧边栏（List + .sidebar 材质 + 系统选中高亮），
-/// 上面叠一层液态玻璃选中光晕。
+/// 苹果原生列表栏：List + .listStyle(.sidebar)，系统材质与系统蓝色选中高亮。
 ///
-/// 跨多行切换（例如「监控」直接点「专注」）时，滑块在垂直方向被拉长，
-/// 起点留一枚逐渐缩小的液滴并断裂出两枚小气泡，最后融合到目标行。
+/// 2.1.5 起不再叠加独立的光晕绘制层：那一层用自定义坐标空间猜行位置，
+/// 会和系统选中高亮错开，出现「褐色椭圆横在两行之间」的 bug。
+/// 现在光晕挂在选中行自己的背景上，跟随行走，坐标天然对齐。
 struct AppSidebar: View {
     @Binding var selection: Int
-    let accent: Color
 
-    @StateObject private var motion = SidebarMotion()
+    @StateObject private var motion = SidebarGlowMotion()
+    @Environment(\.glassMotionEnabled) private var motionEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let items: [(title: String, icon: String)] = [
-        ("监控", "gauge.with.dots.needle.50percent"),
-        ("剪贴板", "clipboard"),
-        ("工具", "wrench.and.screwdriver"),
-        ("专注", "timer")
+    private let items: [SidebarItem] = [
+        SidebarItem(id: 0, title: "监控", icon: "gauge.with.dots.needle.50percent"),
+        SidebarItem(id: 1, title: "剪贴板", icon: "clipboard"),
+        SidebarItem(id: 2, title: "工具", icon: "wrench.and.screwdriver"),
+        SidebarItem(id: 3, title: "专注", icon: "timer")
     ]
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // 1) 原生列表栏：系统材质、系统选中高亮、SF Symbols
-            List(selection: Binding<Int?>(
-                get: { selection },
-                set: { if let value = $0 { selection = value } }
-            )) {
-                ForEach(items.indices, id: \.self) { i in
-                    Label(items[i].title, systemImage: items[i].icon)
-                        .font(.system(size: 13))
-                        .frame(height: 34)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: SidebarRowFrameKey.self,
-                                    value: [i: geo.frame(in: .named("sidebarSpace"))]
-                                )
-                            }
-                        )
-                        .tag(i)
-                }
+        List(selection: Binding<Int?>(
+            get: { selection },
+            set: { if let value = $0 { selection = value } }
+        )) {
+            ForEach(items) { item in
+                row(item)
+                    .tag(item.id)
             }
-            .listStyle(.sidebar)
-            .tint(accent)
-
-            // 2) 液态选中光晕：低透明度叠在行上，不挡文字、不抢点击
-            Group {
-                if reduceMotion {
-                    staticHighlight()
-                } else {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-                        liquidHighlight(date: context.date)
-                    }
-                }
+        }
+        .listStyle(.sidebar)
+        // 系统强调色：选中高亮由 macOS 自己画，形状、圆角、颜色都跟原生 App 一致
+        .tint(.accentColor)
+        .onChange(of: selection) { oldValue, newValue in
+            let span = abs(newValue - oldValue)
+            guard !reduceMotion, motionEnabled else {
+                motion.intensity = 0
+                motion.progress = 1
+                return
             }
-            .opacity(0.32)
-            .allowsHitTesting(false)
-        }
-        .coordinateSpace(name: "sidebarSpace")
-        .onPreferenceChange(SidebarRowFrameKey.self) { motion.frames = $0 }
-        .onAppear {
-            motion.fromIndex = selection
-            motion.toIndex = selection
-            motion.selectedIndex = selection
-        }
-        .onChange(of: selection) { _, newValue in
-            guard newValue != motion.selectedIndex else { return }
-            motion.fromIndex = motion.toIndex
-            motion.toIndex = newValue
-            motion.selectedIndex = newValue
-            motion.startedAt = Date()
-        }
-    }
-
-    // MARK: 逐帧形变（垂直版）
-
-    private func liquidHighlight(date: Date) -> some View {
-        let duration = motion.span > 1 ? 0.78 : 0.52
-        let p = min(1, max(0, date.timeIntervalSince(motion.startedAt) / duration))
-        let eased = easeOutBack(p)
-
-        let fallback = CGRect(x: 12, y: 8, width: 176, height: 34)
-        let from = motion.frames[motion.fromIndex] ?? fallback
-        let to = motion.frames[motion.toIndex] ?? from
-        let fromY = from.midY
-        let travel = to.midY - fromY
-        let y = fromY + travel * CGFloat(eased)
-
-        let width = min(from.width, to.width) - 8
-        let baseHeight = min(from.height, to.height) - 4
-        let stretch = abs(travel) * 0.28 * CGFloat(sin(p * .pi))
-        let height = baseHeight + stretch
-        let x = to.midX
-
-        return Canvas { context, _ in
-            context.addFilter(.alphaThreshold(min: 0.45, color: accent))
-            context.addFilter(.blur(radius: 11))
-            context.drawLayer { ctx in
-                let body = Path(
-                    roundedRect: CGRect(x: x - width / 2, y: y - height / 2,
-                                        width: width, height: height),
-                    cornerRadius: 9,
-                    style: .continuous
-                )
-                ctx.fill(body, with: .color(.white))
-
-                // 跨多行：起点留液滴、断裂出两枚气泡，后段重新融合
-                if motion.span >= 2 && p < 0.72 {
-                    let q = p / 0.72
-                    let radius = height * 0.28 * (1 - q)
-                    let tailY = fromY + (y - fromY) * 0.16
-                    ctx.fill(
-                        Path(ellipseIn: CGRect(x: x - radius, y: tailY - radius,
-                                               width: radius * 2, height: radius * 2)),
-                        with: .color(.white)
-                    )
-                    let gap = y - tailY
-                    let bubble = radius * 0.52
-                    for k in 0..<2 {
-                        let t = 0.34 + 0.26 * CGFloat(k) + 0.16 * CGFloat(q)
-                        let by = tailY + gap * t
-                        let bx = x + (k == 0 ? -1 : 1) * width * 0.10 * (1 - q)
-                        ctx.fill(
-                            Path(ellipseIn: CGRect(x: bx - bubble, y: by - bubble,
-                                                   width: bubble * 2, height: bubble * 2)),
-                            with: .color(.white)
-                        )
-                    }
-                }
+            motion.intensity = span > 1 ? 1 : 0.3
+            motion.progress = 0
+            withAnimation(.spring(response: span > 1 ? 0.62 : 0.44,
+                                  dampingFraction: 0.78)) {
+                motion.progress = 1
             }
         }
     }
 
-    /// 减少动态效果：直接把高亮放在目标行
-    private func staticHighlight() -> some View {
-        let rect = motion.frames[motion.selectedIndex]
-            ?? CGRect(x: 12, y: 8, width: 176, height: 34)
-        return RoundedRectangle(cornerRadius: 9, style: .continuous)
-            .fill(accent.opacity(0.55))
-            .frame(width: rect.width - 8, height: rect.height - 4)
-            .position(x: rect.midX, y: rect.midY)
-    }
-
-    private func easeOutBack(_ p: Double) -> Double {
-        let c1 = 1.42
-        let c3 = c1 + 1
-        let t = p - 1
-        return 1 + c3 * t * t * t + c1 * t * t
+    /// 固定图标槽 + 统一字号 + 统一行高，四行文字左边缘严格对齐
+    private func row(_ item: SidebarItem) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: item.icon)
+                .font(.system(size: 13, weight: .medium))
+                .imageScale(.medium)
+                .frame(width: 22, height: 22, alignment: .center)
+            Text(item.title)
+                .font(.system(size: 13))
+            Spacer(minLength: 0)
+        }
+        .frame(height: 28)
+        .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
+        .background {
+            if selection == item.id && motionEnabled {
+                LiquidRowGlow(progress: motion.progress, intensity: motion.intensity)
+                    .fill(Color.accentColor.opacity(0.13))
+                    .blur(radius: 3)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
