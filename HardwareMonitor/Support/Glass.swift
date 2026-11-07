@@ -24,9 +24,17 @@ private final class GlassHoverState: ObservableObject {
     @Published var hovering = false
 }
 
-// MARK: - 极淡的卡面流光
-/// 2.1.4 起收敛：卡片上只留一条很淡的白色高光带缓慢扫过 + 边缘亮点，
-/// 不再铺满彩色光斑和融合光团。液态玻璃的主视觉收在侧边栏选中行内。
+/// 只改一次布尔值，之后由 CoreAnimation 合成层持续动画，不重算视图、不重绘画布。
+private final class SheenDrive: ObservableObject {
+    @Published var shifted = false
+}
+
+// MARK: - 极淡的卡面流光（2.1.6 性能优化版）
+/// 2.1.5 之前：每张卡片一个 20fps 定时重绘，每帧在画布里画渐变 + 描边，再叠 4pt 模糊。
+/// 主窗口十张卡片同时跑 = 约 200 次画布重绘/秒，是界面卡顿的主因。
+///
+/// 现在：光带是一个普通的 LinearGradient，用 offset 做 repeatForever 动画。
+/// 动画只改图层 transform，由 CoreAnimation 合成，不触发 SwiftUI body 重算、不产生逐帧绘制、不用模糊。
 private struct GlassSheen: View {
     let cornerRadius: CGFloat
     let intensity: Double
@@ -34,68 +42,40 @@ private struct GlassSheen: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.glassMotionEnabled) private var motionEnabled
+    @StateObject private var drive = SheenDrive()
+
+    private var animated: Bool { motionEnabled && !reduceMotion }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        Group {
-            if reduceMotion || !motionEnabled {
-                canvas(phase: 0)
-            } else {
-                TimelineView(.periodic(from: .now, by: 1.0 / 20.0)) { context in
-                    canvas(phase: context.date.timeIntervalSinceReferenceDate)
-                }
-            }
+        let k = (dark ? 0.055 : 0.075) * intensity
+
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: .clear, location: 0.34),
+                    .init(color: .white.opacity(k), location: 0.5),
+                    .init(color: .clear, location: 0.66),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: max(w * 1.1, 40), height: max(h * 2.4, 40))
+            .rotationEffect(.degrees(-16))
+            .offset(x: animated ? (drive.shifted ? w * 0.62 : -w * 0.62) : 0)
+            .animation(
+                animated ? .easeInOut(duration: 19).repeatForever(autoreverses: true) : .default,
+                value: drive.shifted
+            )
+            .onAppear { if animated { drive.shifted = true } }
+            .frame(width: w, height: h, alignment: .center)
+            .clipShape(shape)
         }
-        .clipShape(shape)
         .allowsHitTesting(false)
-    }
-
-    private func canvas(phase: Double) -> some View {
-        Canvas { context, size in
-            let w = max(size.width, 1)
-            let h = max(size.height, 1)
-            // 刻意压得很淡，避免卡片看起来「花」
-            let k = (dark ? 0.055 : 0.075) * intensity
-
-            let sweep = CGFloat(0.5 + 0.5 * sin(phase * 0.28))
-            let start = CGPoint(x: -w * 0.45 + sweep * w * 1.9, y: h * 1.15)
-            let end = CGPoint(x: -w * 0.05 + sweep * w * 1.9, y: -h * 0.15)
-            context.fill(
-                Path(CGRect(x: 0, y: 0, width: w, height: h)),
-                with: .linearGradient(
-                    Gradient(stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .clear, location: 0.38),
-                        .init(color: .white.opacity(k), location: 0.5),
-                        .init(color: .clear, location: 0.62),
-                        .init(color: .clear, location: 1)
-                    ]),
-                    startPoint: start,
-                    endPoint: end
-                )
-            )
-
-            let edge = Path(
-                roundedRect: CGRect(x: 0.5, y: 0.5, width: w - 1, height: h - 1),
-                cornerRadius: cornerRadius,
-                style: .continuous
-            )
-            let q = min(0.85, max(0.15, 0.5 + 0.5 * sin(phase * 0.22)))
-            context.stroke(
-                edge,
-                with: .linearGradient(
-                    Gradient(stops: [
-                        .init(color: .white.opacity(0.02), location: 0),
-                        .init(color: .white.opacity(min(0.22, k * 2.2)), location: q),
-                        .init(color: .white.opacity(0.02), location: 1)
-                    ]),
-                    startPoint: .zero,
-                    endPoint: CGPoint(x: w, y: h)
-                ),
-                lineWidth: 1
-            )
-        }
-        .blur(radius: 4)
     }
 }
 

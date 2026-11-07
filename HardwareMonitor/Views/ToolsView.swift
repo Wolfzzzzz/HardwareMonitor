@@ -1059,7 +1059,7 @@ struct AdvancedToolsView: View {
     private var csvCard: some View {
         card(title: "导出监控数据", icon: "square.and.arrow.up") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("把当前缓存的 \(model.history.count) 条采样导出成 CSV：时间、CPU、内存、芯片/GPU 温度、网络上下行。Excel、Numbers 直接打开。")
+                Text("把当前缓存的 \(model.historyCount) 条采样导出成 CSV：时间、CPU、内存、芯片/GPU 温度、网络上下行。Excel、Numbers 直接打开。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 10) {
@@ -1070,7 +1070,7 @@ struct AdvancedToolsView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .disabled(model.history.isEmpty)
+                    .disabled(model.historyCount == 0)
 
                     if let msg = ui.exportMessage {
                         Text(msg)

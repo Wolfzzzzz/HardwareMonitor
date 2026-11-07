@@ -1,6 +1,6 @@
 # HardwareMonitor
 
-> 版本 **26DF10Q1beta2.1.5** · 全部功能免费，无任何付费墙。
+> 版本 **26DF10Q1beta2.1.6** · 全部功能免费，无任何付费墙。
 
 > [English](README_EN.md)
 
@@ -10,7 +10,7 @@
 
 | 项 | 说明 |
 | --- | --- |
-| 安装包 | `HardwareMonitor-26DF10Q1beta2.1.5-macOS-arm64.pkg`（推荐，双击安装）<br>`HardwareMonitor-26DF10Q1beta2.1.5-macOS-arm64.zip`（解压后手动拖动） |
+| 安装包 | `HardwareMonitor-26DF10Q1beta2.1.6-macOS-arm64.pkg`（推荐，双击安装）<br>`HardwareMonitor-26DF10Q1beta2.1.6-macOS-arm64.zip`（解压后手动拖动） |
 | 大小 | 约 1.3 MB |
 | 系统 | macOS 14.0 或更高（在 macOS 27.2 上开发验证） |
 | 架构 | Apple Silicon（arm64） |
@@ -61,6 +61,17 @@ macOS 菜单栏硬件监控。实时看 CPU、内存、磁盘、网络、电池�
 - **专注音景**：雨声 / 海浪 / 风扇三种环境声，用 AVAudioEngine 本地合成（不含任何音频素材、不联网、不录音），音量独立可调
 - **专注统计**：近 7 天柱状图、连续专注天数、今日番茄数与累计时长
 - **新手引导**：首次启动自动播放漫游式教程，17 步逐个功能介绍，切页后气泡平滑跟位，结束自动回到监控主界面；设置里可重新播放
+
+## 性能优化（2.1.6）
+
+针对主窗口卡顿，逐项削掉常驻开销：
+
+- **卡面流光**：原来每张玻璃卡片各跑一个 20fps `TimelineView`，每帧重绘 Canvas 渐变与描边再叠 4pt 模糊，十张卡片约 200 次重绘/秒。改成一条普通 `LinearGradient` 用 `offset` + `repeatForever` 做图层动画，只改 transform，由 CoreAnimation 合成，不重算视图、不重绘画布、不用模糊
+- **采样历史**：`history` 从 `@Published` 改为普通数组。之前每秒 append 会广播给所有订阅视图、触发整棵视图树重算；图表仍读 5 秒同步的 `chartHistory`，UI 条数改用 5 秒同步的 `historyCount`，CSV 导出直接读数组
+- **Dock 角标**：缓存上次字符串，温度整数没变就不写 `dockTile`，不再每秒重绘 Dock
+- **共享快照**：widget 用的 JSON 编码 + UserDefaults 写盘从每秒降到 5 秒一次
+- **其它计时器**：全屏专注呼吸背景 20fps → 12fps；压力测试页 5 个 `TimelineView`（最高 60fps）统一 24fps
+- 系统「减少动态效果」或关掉设置里的液态玻璃开关时，卡面流光完全静态
 
 ## 原生按钮与列表栏（2.1.5）
 

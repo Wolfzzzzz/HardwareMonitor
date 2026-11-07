@@ -364,12 +364,13 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private var lastDockBadge: String? = "__unset__"
     func updateDockBadge() {
-        if dockBadgeEnabled, let t = snapshot.cpuTempC {
-            NSApp.dockTile.badgeLabel = "\(Int(t.rounded()))°"
-        } else {
-            NSApp.dockTile.badgeLabel = nil
-        }
+        let value: String? = (dockBadgeEnabled ? snapshot.cpuTempC : nil)
+            .map { "\(Int($0.rounded()))°" }
+        guard value != lastDockBadge else { return }   // 值没变就不写 Dock，避免每秒重绘
+        lastDockBadge = value
+        NSApp.dockTile.badgeLabel = value
     }
 
     // MARK: - 免费功能：系统概览
@@ -592,8 +593,12 @@ final class AppModel: ObservableObject {
     // MARK: - 数据状态
 
     @Published var snapshot = SystemSnapshot()
-    @Published var history: [HistoryPoint] = []
-    /// 图表专用历史（每 3 次快照更新一次，降低图表重绘开销）
+    /// 全量采样历史。2.1.6 起不再是 @Published：每秒 append 都会广播给所有订阅视图，
+    /// 触发整棵视图树重算。图表读 chartHistory（5 秒同步），导出时直接读这个数组。
+    var history: [HistoryPoint] = []
+    /// UI 显示的采样条数，5 秒同步一次
+    @Published var historyCount: Int = 0
+    /// 图表专用历史（每 5 次快照更新一次，降低图表重绘开销）
     @Published var chartHistory: [HistoryPoint] = []
     @Published var isPanelVisible = false
     @Published var alertActive = false
@@ -729,8 +734,11 @@ final class AppModel: ObservableObject {
             self.appendHistory(snap)
             self.uiTick += 1
             // 图表：5 秒节流 + 只渲染最近 300 点（全量 1200 点每秒重绘是卡顿主因）
-            if self.uiTick % 5 == 1, self.mainWindowVisible || self.isPanelVisible {
-                self.chartHistory = Array(self.history.suffix(300))
+            if self.uiTick % 5 == 1 {
+                self.historyCount = self.history.count
+                if self.mainWindowVisible || self.isPanelVisible {
+                    self.chartHistory = Array(self.history.suffix(300))
+                }
             }
             self.alertEngine.check(snap, model: self)
             self.refreshAlertActive(snap)
@@ -751,8 +759,11 @@ final class AppModel: ObservableObject {
                     }
                 }
             }
-            DispatchQueue.global(qos: .utility).async { [weak self] in
-                self?.writeSharedSnapshot(snap)
+            // JSON 编码 + UserDefaults 写盘降到 5 秒一次
+            if self.uiTick % 5 == 1 {
+                DispatchQueue.global(qos: .utility).async { [weak self] in
+                    self?.writeSharedSnapshot(snap)
+                }
             }
         }
         hub.start(interval: refreshInterval)

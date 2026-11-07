@@ -174,7 +174,7 @@ struct FocusFullScreenView: View {
 
     /// 用 TimelineView 驱动呼吸感（不依赖 @State，避免宏问题）
     private var breathingBackground: some View {
-        TimelineView(.periodic(from: .now, by: 0.05)) { context in
+        TimelineView(.periodic(from: .now, by: 1.0 / 12.0)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let pulse = 0.5 + 0.5 * sin(t * 0.7)
 

@@ -189,7 +189,7 @@ struct BenchmarkView: View {
 /// ① 整数：滚动哈希瀑布
 struct HashCascadeView: View {
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
             Canvas { c, size in
                 let now = ctx.date.timeIntervalSinceReferenceDate
                 let seed = UInt64(now * 1000)
@@ -219,7 +219,7 @@ struct HashCascadeView: View {
 /// ② 浮点：旋转 3D 立方体线框
 struct FloatCubeView: View {
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
             Canvas { c, size in
                 let t = ctx.date.timeIntervalSinceReferenceDate
                 let cx = size.width / 2
@@ -269,7 +269,7 @@ struct FloatCubeView: View {
 /// ③ 内存：横向流动光带
 struct MemoryStreamView: View {
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
             Canvas { c, size in
                 let t = ctx.date.timeIntervalSinceReferenceDate
                 let barRect = CGRect(x: 0, y: size.height - 30, width: size.width, height: 30)
@@ -306,7 +306,7 @@ struct MemoryStreamView: View {
 /// ④ 位运算：闪烁方块阵列
 struct BitGridView: View {
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
             Canvas { c, size in
                 let t = ctx.date.timeIntervalSinceReferenceDate
                 let cols = 16
@@ -335,7 +335,7 @@ struct BitGridView: View {
 /// 待机（未跑分）
 struct IdlePulseView: View {
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
             Canvas { c, size in
                 let t = ctx.date.timeIntervalSinceReferenceDate
                 let pulse = (sin(t * 2) + 1) * 0.5
