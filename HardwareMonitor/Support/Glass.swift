@@ -25,7 +25,7 @@ private final class GlassHoverState: ObservableObject {
 }
 
 // MARK: - 极淡的卡面流光
-/// 2.1.3 起收敛：卡片上只留一条很淡的白色高光带缓慢扫过 + 边缘亮点，
+/// 2.1.4 起收敛：卡片上只留一条很淡的白色高光带缓慢扫过 + 边缘亮点，
 /// 不再铺满彩色光斑和融合光团。液态玻璃的主视觉交给顶部标签栏的滑块。
 private struct GlassSheen: View {
     let cornerRadius: CGFloat
@@ -163,12 +163,6 @@ extension View {
     func glassPanelBackground(cornerRadius: CGFloat = 18) -> some View {
         modifier(GlassSurface(cornerRadius: cornerRadius, material: .regular,
                               sheenScale: 0.8, shadowRadius: 20))
-    }
-
-    /// 玻璃按钮
-    func glassButton(cornerRadius: CGFloat = 10) -> some View {
-        modifier(GlassSurface(cornerRadius: cornerRadius, material: .ultraThin,
-                              sheenScale: 1.25, shadowRadius: 6))
     }
 
     /// 主窗口把用户设置注入整棵视图树

@@ -24,14 +24,11 @@ struct MenuBarView: View {
 
     private func quickAction(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 2) {
-                Image(systemName: icon).font(.system(size: 14))
-                Text(title).font(.system(size: 10))
-            }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .glassButton(cornerRadius: 8)
+            Label(title, systemImage: icon)
+                .font(.system(size: 12))
+                .frame(maxWidth: .infinity, minHeight: 30)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bordered)
     }
 
     private func openMainWindow() {

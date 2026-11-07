@@ -7,32 +7,33 @@ struct MainWindowView: View {
     @StateObject private var tour = OnboardingController()
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-                .padding(.horizontal, 18)
-                .padding(.top, 14)
-                .tourAnchor("header")
-            LiquidTabBar(selection: $model.mainTab, accent: model.accentColor)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
+        NavigationSplitView {
+            AppSidebar(selection: $model.mainTab, accent: model.accentColor)
+                .navigationSplitViewColumnWidth(min: 176, ideal: 196, max: 240)
                 .tourAnchor("tabs")
-
-            Group {
-                if model.mainTab == 0 {
-                    monitorContent
-                } else if model.mainTab == 1 {
-                    ClipboardView()
-                        .environmentObject(model)
-                } else if model.mainTab == 2 {
-                    ToolsView()
-                        .environmentObject(model)
-                } else if model.mainTab == 3 {
-                    FocusView()
-                        .environmentObject(model)
+        } detail: {
+            VStack(spacing: 0) {
+                header
+                    .padding(.horizontal, 18)
+                    .padding(.top, 14)
+                    .tourAnchor("header")
+                Group {
+                    if model.mainTab == 0 {
+                        monitorContent
+                    } else if model.mainTab == 1 {
+                        ClipboardView()
+                            .environmentObject(model)
+                    } else if model.mainTab == 2 {
+                        ToolsView()
+                            .environmentObject(model)
+                    } else if model.mainTab == 3 {
+                        FocusView()
+                            .environmentObject(model)
+                    }
                 }
+                // 占满剩余空间并贴顶，避免不同页面高度不同时内容往下沉
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            // 统一占满剩余空间并贴顶：避免不同标签页内容高度不同时，整块内容被窗口垂直居中而「往下沉」
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .onAppear {
             model.setMainWindowVisible(true)
@@ -52,7 +53,7 @@ struct MainWindowView: View {
         .tint(model.accentColor)
         .glassMotion(model.glassMotionEnabled)
         .preferredColorScheme(model.preferredColorScheme)
-        .frame(minWidth: 780, minHeight: 560, alignment: .top)
+        .frame(minWidth: 900, minHeight: 560, alignment: .top)
         .background(
             LinearGradient(colors: model.themeGradient, startPoint: .top, endPoint: .bottom)
                 .overlay(Color.black.opacity(0.25))
@@ -122,9 +123,13 @@ struct MainWindowView: View {
             Text(LZ.t("更新于 ", "Updated ") + (model.lastUpdated.map { Fmt.time($0) } ?? "--"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("刷新 \(Int(model.refreshInterval))s")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Button {
+                model.restartSampling()
+            } label: {
+                Label("立即刷新", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
             Text(AppVersion.full)
                 .font(.caption2.monospacedDigit())
                 .padding(.horizontal, 7)
