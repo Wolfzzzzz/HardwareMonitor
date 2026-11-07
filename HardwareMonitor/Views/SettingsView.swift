@@ -253,9 +253,7 @@ struct SettingsView: View {
 
             Section {
                 Toggle("液态玻璃流动光效", isOn: $model.glassMotionEnabled)
-                LiquidGlassPreview()
-                    .padding(.vertical, 4)
-                Text("卡片上的高光带、折射光斑、边缘亮点和融合光团会缓慢流动；鼠标移入卡片时高光增强。下面的预览可以直接拖动两枚玻璃球。关闭开关后是静态玻璃，功能不受影响。")
+                Text("卡片上只有一条极淡的高光带缓慢扫过，鼠标移入时略微变亮。关闭后是静态玻璃。液态玻璃的主效果在顶部标签栏。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             } header: {

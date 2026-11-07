@@ -12,17 +12,10 @@ struct MainWindowView: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 14)
                 .tourAnchor("header")
-            Picker("", selection: $model.mainTab) {
-                Text("监控").tag(0)
-                Text("剪贴板").tag(1)
-                Text("工具").tag(2)
-                Text("专注").tag(3)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .tourAnchor("tabs")
+            LiquidTabBar(selection: $model.mainTab, accent: model.accentColor)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .tourAnchor("tabs")
 
             Group {
                 if model.mainTab == 0 {
